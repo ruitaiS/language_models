@@ -1,14 +1,16 @@
 import pandas as pd
 
-'''
-vocab = pd.read_csv('test_vocab.txt', sep=' ', header=None, quoting=3).rename(columns={0: 'index', 1: 'word'})
-bigram = pd.read_csv('test_bigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2:'P'})
-bigram['subset_sum']= bigram.groupby(['x_i'])['P'].transform('sum')
-bigram['normalized_P'] = bigram['P']/bigram['subset_sum']
-'''
+vocab = pd.read_csv('vocab.txt', sep=' ', header=None,
+                    quoting=3, # handle quotation marks
+                    dtype={1: 'string'},  # Force the second column to be treated as string
+                    keep_default_na=False # Disable default NaN detection ("None" won't be converted to NaN)
+                    ).rename(columns={0: 'index', 1: 'word'})
 
-#Note quoting=3 is required to properly handle quotation marks
-vocab = pd.read_csv('vocab.txt', sep=' ', header=None, quoting=3).rename(columns={0: 'index', 1: 'word'})
+#index 988 is the word "None" which sometimes is converted to a NaN
+#Uncomment this code to verify that it reads in correctly
+#print("Check 988")
+#test = vocab.iloc[985:996]  # View rows 985 to 995
+#print(test['word'])
 
 unigram = pd.read_csv('unigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_0', 1: 'e'})
 bigram = pd.read_csv('bigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2:'e'})

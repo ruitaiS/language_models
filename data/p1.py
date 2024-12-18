@@ -75,6 +75,6 @@ def generate_sentence():
 number_of_sentences = 10
 sentences = [generate_sentence() for _ in range(0, number_of_sentences)]
 
-#with open('p1_output.txt', "w") as file:
-#  for sentence in sentences:
-#    file.write(f'{sentence}\n')
+with open('p1_output.txt', "w") as file:
+  for sentence in sentences:
+    file.write(f'{sentence}\n')

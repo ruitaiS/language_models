@@ -10,6 +10,9 @@ transition_matrix = bigram.pivot(index='x_i', columns='x_j', values='normalized_
 transition_matrix = transition_matrix.reindex(index=list(range(len(vocab))), columns=list(range(len(vocab))), method="pad", fill_value=0)
 
 def word(word_index):
+  if not isinstance(vocab.at[word_index, 'word'], str):
+    print("not string")
+    print(word_index)
   return vocab.at[word_index, 'word']
 
 def P_emission(observed, word_index, l = 0.01):
@@ -76,6 +79,13 @@ print(corrected_E3)
 print(corrected_E4)
 print(corrected_E5)
 
+with open('p2_output.txt', "w") as file:
+  file.write(f'{corrected_E1}\n')
+  file.write(f'{corrected_E2}\n')
+  file.write(f'{corrected_E3}\n')
+  file.write(f'{corrected_E4}\n')
+  file.write(f'{corrected_E5}\n')
+
 '''
 1.
 P * E elementwise multiplication
@@ -86,7 +96,5 @@ get list of max indexes
 
 each column represents a word
 append the word to the phrase at the max index
-
-
 
 '''
