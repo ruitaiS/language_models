@@ -58,16 +58,14 @@ trigram_df = pd.DataFrame(
     columns=["x_i", "x_j", "x_k", "e"]
 ).sort_values(by='x_i')
 
-#print(unigram_df)
-#print(bigram_df)
-#print(trigram_df)
-
-# Create token vocabulary and mappings to id numbers
+# Create token vocabulary
 vocab_df = unigram_df['x_0'].sort_values().reset_index(drop=True).to_frame()
 vocab_df['id'] = vocab_df.index + 1
-id_map = dict(zip(vocab_df['x_0'], vocab_df['id']))
 
+# TODO: Optimize
+# Create mappings to id numbers
 # Replace token strings with id numbers
+id_map = dict(zip(vocab_df['x_0'], vocab_df['id']))
 unigram_df['x_0'] = unigram_df['x_0'].replace(id_map)
 bigram_df['x_i'] = bigram_df['x_i'].replace(id_map)
 bigram_df['x_j'] = bigram_df['x_j'].replace(id_map)
@@ -76,6 +74,7 @@ trigram_df['x_j'] = trigram_df['x_j'].replace(id_map)
 trigram_df['x_k'] = trigram_df['x_k'].replace(id_map)
 
 
+#TODO Decide Directory Structure
 vocab_outfile = 'n-gram_counts/'+source_text+'/vocab.txt'
 unigram_outfile = 'n-gram_counts/'+source_text+'/unigram_counts.txt'
 bigram_outfile = 'n-gram_counts/'+source_text+'/bigram_counts.txt'
@@ -85,8 +84,6 @@ vocab_df[['id', 'x_0']].to_csv(vocab_outfile, index=False, header=False, sep=' '
 unigram_df[['x_0', 'e']].to_csv(unigram_outfile, index=False, header=False, sep=' ')
 bigram_df[['x_i', 'x_j', 'e']].to_csv(bigram_outfile, index=False, header=False, sep=' ')
 trigram_df[['x_i', 'x_j', 'x_k', 'e']].to_csv(trigram_outfile, index=False, header=False, sep=' ')
-
-#with open('n-gram_counts/'+source_text+'/vocab.txt', "w") as outfile:
 
 
     
