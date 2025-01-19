@@ -5,12 +5,12 @@ Probabilistic sentence generation and correction
 # Create a new virtual environment and activate it
 python3 -m venv venv
 
-#macOS/Linux only:
+#macOS/Linux:
 source venv/bin/activate
 
-#Windows only:
+#Windows:
 venv\Scripts\activate
 
-#Install Requirements
+#Install Requirements into venv:
 pip install -r requirements.txt
 ```

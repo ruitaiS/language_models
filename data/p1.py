@@ -55,9 +55,10 @@ def recurse(word_indices):
     return word_indices
   else:
     return recurse(word_indices)
-  
+
+#TODO: Generalize
 def valid_sentence(word_indices):
-  #Redo <s> " </s> sentences, and sentences that end without a valid character
+  #Reject <s> " </s> sentences, and sentences that end without a valid character
   valid_endings = [0, 2, 8, 19, 52, 53, 54, 60, 61, 154]#[1, 3, 9, 20, 53, 54, 55, 61, 62, 155]
   return (word_indices != [152, 2, 151]) & (word_indices[-2] in valid_endings)
   
@@ -65,7 +66,7 @@ def generate_sentence():
   #x_0 is first word, and is always 152: '<s>'
   #x_i is ith word, x_j is i+1 th word, x_k is i+2 th word
   #x_n is last word, and is always 151: '</s>'
-  x_0 = 152
+  x_0 = 152 # TODO: Generalize. Should be able to read this value right off the vocab df, instead of hardcoding
   word_indices = recurse([x_0])
   if not valid_sentence(word_indices): return generate_sentence()
   sentence = ' '.join(map(lambda index: word(index), word_indices))
