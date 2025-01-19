@@ -25,6 +25,16 @@ def trigram_next(x_i, x_j):
     raise ValueError(f"No trigrams begin with '{word(x_i)} {word(x_j)}'")
   return np.random.choice(subset['x_k'], size=1, p=subset['normalized_P'])[0]
 
+# TODO: 
+# This needs a rewrite so it actually traverses the search space intelligently
+
+# rn it's also stuck on the edge case of <s> <x_0> not having any trigrams
+# but won't back off to just <s> and pick another <x_0>
+
+# consider weighted merging the bigram vs. trigram probs
+# i think rn it looks exclusively at trigram probs
+
+
 def recurse(word_indices):
   if (len(word_indices) == 0):
     x_0 = unigram_next()
@@ -58,16 +68,16 @@ def recurse(word_indices):
 
 #TODO: Generalize
 def valid_sentence(word_indices):
-  #Reject <s> " </s> sentences, and sentences that end without a valid character
-  valid_endings = [0, 2, 8, 19, 52, 53, 54, 60, 61, 154]#[1, 3, 9, 20, 53, 54, 55, 61, 62, 155]
-  return (word_indices != [152, 2, 151]) & (word_indices[-2] in valid_endings)
+  #Reject sentences that end without a valid character
+  valid_endings = [1,4,5,6,7]
+  return (word_indices[-2] in valid_endings)
   
 #TODO: Generalize
 def generate_sentence():
   #x_0 is first word, and is always 152: '<s>'
   #x_i is ith word, x_j is i+1 th word, x_k is i+2 th word
   #x_n is last word, and is always 151: '</s>'
-  x_0 = 152 # TODO: Generalize. Should be able to read this value right off the vocab df, instead of hardcoding
+  x_0 = 9 # TODO: Generalize. Should be able to read this value right off the vocab df, instead of hardcoding
   word_indices = recurse([x_0])
   if not valid_sentence(word_indices): return generate_sentence()
   sentence = ' '.join(map(lambda index: word(index), word_indices))

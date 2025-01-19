@@ -28,11 +28,12 @@ bigram['normalized_P'] = bigram['P']/bigram['subset_sum']
 trigram['subset_sum']= trigram.groupby(['x_i', 'x_j'])['P'].transform('sum')
 trigram['normalized_P'] = trigram['P']/trigram['subset_sum']
 
+# TODO: indexing issues or autism?
 #CS-ify the indices
-vocab['index'] -= 1
-unigram['x_0'] -= 1
-bigram[['x_i', 'x_j']] -= 1
-trigram[['x_i', 'x_j', 'x_k']] -= 1
+#vocab['index'] -= 1
+#unigram['x_0'] -= 1
+#bigram[['x_i', 'x_j']] -= 1
+#trigram[['x_i', 'x_j', 'x_k']] -= 1
 
 bigram = bigram[['x_i', 'x_j', 'normalized_P']]
 trigram = trigram[['x_i', 'x_j', 'x_k', 'normalized_P']]
