@@ -23,12 +23,16 @@ def process_csv(filepath):
   return output    
 
 def get_lookups():
-  token_from_index = process_csv('text/b0_vocab.txt')
-  index_from_token = {token: index for index, token in token_from_index.items()}
-  return index_from_token, token_from_index
+  # TODO: These abbreviations are confusing and retarded
+  # tfx >> token from index ; xft >> index from token
+  tfx = process_csv('text/b0_vocab.txt')
+  tfx = {a[0]:b for a, b in tfx.items()}
+  xft = {b:a for a, b in tfx.items()}
+  return xft, tfx
 
 def get_unigram():
   unigram = process_csv('text/b1_unigram_counts.txt')
+  unigram = {a[0]:b for a, b in unigram.items()}
   print(f'Unigram Length: {len(unigram)}')
   return unigram
 

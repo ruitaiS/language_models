@@ -47,9 +47,10 @@ for line in train_set:
     parts = line.split("\t")
     if len(parts) > 1:
         text = parts[1].strip()
-        tokens = word_tokenize(text.lower()) # word_tokenize(text)
+        tokens = word_tokenize(text) #word_tokenize(text.lower())
         #print("Tokens:", tokens)
         for i in range(len(tokens)):
+            unigrams[tokens[i]] = unigrams.get(tokens[i], 0) + 1
             if i == 0: # first
                 unigrams['<s>'] = unigrams.get('<s>', 0) + 1
                 bigrams[('<s>',tokens[i])] = bigrams.get(('<s>',tokens[i]), 0) + 1            
@@ -58,7 +59,6 @@ for line in train_set:
                 else: # (first and also last)
                     trigrams[('<s>',tokens[i], '</s>')] = trigrams.get(('<s>',tokens[i], '</s>'), 0) + 1
             else:
-                unigrams[tokens[i]] = unigrams.get(tokens[i], 0) + 1
                 if i == len(tokens) - 1: # if no more
                     bigrams[(tokens[i], '</s>')] = bigrams.get((tokens[i], '</s>'), 0) + 1
                     unigrams['</s>'] = unigrams.get('</s>', 0) + 1
@@ -97,21 +97,21 @@ unigrams = {xft[unigram] : logprob for unigram, logprob in unigrams.items()}
 bigrams = {(xft[bigram[0]], xft[bigram[1]]): logprob for bigram, logprob in bigrams.items()}
 trigrams = {(xft[trigram[0]], xft[trigram[1]], xft[trigram[2]]): logprob for trigram, logprob in trigrams.items()}
 
-with open('b0_vocab.txt', 'w') as f:
+with open('text/b0_vocab.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     writer.writerows(sorted(vocab.items(), key= lambda item: item[1])) # item = (index, token); sort by token
 
-with open('b1_unigram_counts.txt', 'w') as f:
+with open('text/b1_unigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for x_i, e in unigrams.items():
         writer.writerow([x_i, e])
 
-with open('b2_bigram_counts.txt', 'w') as f:
+with open('text/b2_bigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for (x_i, x_j), e in bigrams.items():
         writer.writerow([x_i, x_j, e])
 
-with open('b3_trigram_counts.txt', 'w') as f:
+with open('text/b3_trigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for (x_i, x_j, x_k), e in trigrams.items():
         writer.writerow([x_i, x_j, x_k, e])
