@@ -29,8 +29,8 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
 
   for sentence in observed_set:
     for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string representation, x_i for vocab index representation
-      unigram_prob = unigram.get(get_index(t_i.lower()), math.log10(epsi))
-      
+      unigram_prob = unigram.get(get_index(t_i), math.log10(epsi))
+
       if i == 0:
           bigram_prob = math.log10(epsi) # TODO idk about this
           trigram_prob = math.log10(epsi)
@@ -39,12 +39,12 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
         one_before = sentence[i-1]
 
         #print(f"last i: {get_index(one_before)}, last t_i: {one_before}")
-        bigram_prob = bigram.get((get_index(one_before.lower()), get_index(t_i.lower())), math.log10(epsi))
+        bigram_prob = bigram.get((get_index(one_before), get_index(t_i)), math.log10(epsi))
         #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
         trigram_prob = math.log10(epsi*epsi)
         if i > 1:
           two_before = sentence[i-2]
-          trigram_prob = trigram.get((get_index(two_before.lower()), get_index(one_before.lower()), get_index(t_i.lower())), math.log10(epsi))
+          trigram_prob = trigram.get((get_index(two_before), get_index(one_before), get_index(t_i)), math.log10(epsi))
           print(f"{two_before} {one_before} {t_i}")
           #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
       
@@ -63,6 +63,7 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
       else:
         trigram_prob = trigram.get((sentence[i-2], sentence[i-1], word), epsi)
       '''
+      print(f"Bigram prob: {bigram_prob}")
       if (bigram_prob > math.log10(epsi)):
         print(f"i: {i}, Phrase: {one_before}{t_i}")
       #if ( trigram_prob > math.log10(epsi)):

@@ -15,11 +15,14 @@ vocab = pd.read_csv('text/b0_vocab.txt', sep=' ', header=None,
                     ).rename(columns={0: 'index', 1: 'token'})
 '''
 
-def process_csv(filepath):
+def process_csv(filepath, dType=None):
   output = {}
   with open(filepath, mode='r') as f:
     for row in csv.reader(f, delimiter=' '):
-      output[tuple(row[:-1])] = row[-1] # Last column is the value; other columns form a tuple acting as key
+      if not dType:
+        output[tuple(row[:-1])] = row[-1] # Last column is the value; other columns form a tuple acting as key
+      else:
+        output[tuple(row[:-1])] = dType(row[-1])
   return output    
 
 def get_lookups():
@@ -28,22 +31,27 @@ def get_lookups():
   tfx = process_csv('text/b0_vocab.txt')
   tfx = {a[0]:b for a, b in tfx.items()}
   xft = {b:a for a, b in tfx.items()}
+  print(f"tfx dtype: {type(next(iter(tfx.values())))}")
+  print(f"xft dtype: {type(next(iter(xft.values())))}")
   return xft, tfx
 
 def get_unigram():
-  unigram = process_csv('text/b1_unigram_counts.txt')
+  unigram = process_csv('text/b1_unigram_counts.txt', dType=float)
   unigram = {a[0]:b for a, b in unigram.items()}
   print(f'Unigram Length: {len(unigram)}')
+  print(f"Unigram dtype: {type(next(iter(unigram.values())))}")
   return unigram
 
 def get_bigram():
-  bigram = process_csv('text/b2_bigram_counts.txt')
+  bigram = process_csv('text/b2_bigram_counts.txt', dType=float)
   print(f'Bigram Length: {len(bigram)}')
+  print(f"Bigram dtype: {type(next(iter(bigram.values())))}")
   return bigram
 
 def get_trigram():
-  trigram = process_csv('text/b3_trigram_counts.txt')
+  trigram = process_csv('text/b3_trigram_counts.txt', dType=float)
   print(f'Trigram Length: {len(trigram)}')
+  print(f"Trigram dtype: {type(next(iter(trigram.values())))}")
   return trigram
 
 def get_dev_set():
