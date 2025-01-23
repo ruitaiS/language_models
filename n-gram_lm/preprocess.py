@@ -2,6 +2,7 @@ import os
 import random
 import nltk
 import math
+import csv
 import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -13,7 +14,7 @@ from nltk.tokenize import word_tokenize
 
 # Might be interesting to explore sentence sequences. Maybe some groups of sentences go together
 
-input_file = "text/a0_input.txt"
+input_file = "text/akjv.txt"
 unigrams = {}
 bigrams = {}
 trigrams = {}
@@ -75,17 +76,48 @@ unigram_sums = sum(unigrams.values())
 bigram_sums = sum(bigrams.values())
 trigram_sums = sum(trigrams.values())
 
-print(f"{len(unigrams)} unigrams")
-print(f"{len(bigrams)} bigrams")
-print(f"{len(trigrams)} trigrams")
+print(f"{len(unigrams)} unigrams in training set")
+print(f"{len(bigrams)} bigrams in training set")
+print(f"{len(trigrams)} trigrams in training set")
 
 # Normalize Probabilities
 # Previous n-gram files (and the existing code to process them) use log10(P), so keep that convention here
 # It's to make multiplication easier bc you can just add them as logs then exponentiate at the end
-unigram_probs = {x: math.log10(count / unigram_sums) for x, count in unigrams.items()}
-bigram_probs = {x: math.log10(count / bigram_sums) for x, count in bigrams.items()}
-trigram_probs = {x: math.log10(count / trigram_sums) for x, count in trigrams.items()}
+unigrams = {x: math.log10(count / unigram_sums) for x, count in unigrams.items()}
+bigrams = {x: math.log10(count / bigram_sums) for x, count in bigrams.items()}
+trigrams = {x: math.log10(count / trigram_sums) for x, count in trigrams.items()}
 
+# Assign index mapping and create vocab hash
+xft = {token: index + 1 for index, token in enumerate(sorted(unigrams.keys()))} # xft eg. index from token
+vocab = {b:a for a,b in xft.items()}
+
+# TODO: check sequencing on the tuples
+# Convert counts hashes to all use indexes instead of token strings
+unigrams = {xft[unigram] : logprob for unigram, logprob in unigrams.items()}
+bigrams = {(xft[bigram[0]], xft[bigram[1]]): logprob for bigram, logprob in bigrams.items()}
+trigrams = {(xft[trigram[0]], xft[trigram[1]], xft[trigram[2]]): logprob for trigram, logprob in trigrams.items()}
+
+with open('b0_vocab.txt', 'w') as f:
+    writer = csv.writer(f, delimiter=' ')
+    writer.writerows(sorted(vocab.items(), key= lambda item: item[1])) # item = (index, token); sort by token
+
+with open('b1_unigram_counts.txt', 'w') as f:
+    writer = csv.writer(f, delimiter=' ')
+    for x_i, e in unigrams.items():
+        writer.writerow([x_i, e])
+
+with open('b2_bigram_counts.txt', 'w') as f:
+    writer = csv.writer(f, delimiter=' ')
+    for (x_i, x_j), e in bigrams.items():
+        writer.writerow([x_i, x_j, e])
+
+with open('b3_trigram_counts.txt', 'w') as f:
+    writer = csv.writer(f, delimiter=' ')
+    for (x_i, x_j, x_k), e in trigrams.items():
+        writer.writerow([x_i, x_j, x_k, e])
+    
+
+'''
 
 # TODO: Just use a hash; pandas is really slow and unnecessary
 # Convert to dataframes
@@ -113,8 +145,14 @@ trigram_df['x_i'] = trigram_df['x_i'].replace(id_map)
 trigram_df['x_j'] = trigram_df['x_j'].replace(id_map)
 trigram_df['x_k'] = trigram_df['x_k'].replace(id_map)
 
+with open(output_file, mode="w", newline="") as file:
+    writer = csv.writer(file)
+    for key, value in example_dict.items():
+        writer.writerow(list(key) + [value])
+
 
 vocab_df[['id', 'x_0']].to_csv('text/b0_vocab.txt', index=False, header=False, sep=' ')
 unigram_df[['x_0', 'e']].to_csv('text/b1_unigram_counts.txt', index=False, header=False, sep=' ')
 bigram_df[['x_i', 'x_j', 'e']].to_csv('text/b2_bigram_counts.txt', index=False, header=False, sep=' ')
 trigram_df[['x_i', 'x_j', 'x_k', 'e']].to_csv('text/b3_trigram_counts.txt', index=False, header=False, sep=' ')
+'''
