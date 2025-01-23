@@ -9,13 +9,19 @@ from nltk.tokenize import word_tokenize
 
 source_text = 'genesis'
 
+#vocab = set()
 unigrams = {}
 bigrams = {}
 trigrams = {}
 
-with open('source_text/'+source_text+'/preprocessed.txt', "r") as infile:
+# Create token vocabulary
+#vocab_df = unigram_df['x_0'].sort_values().reset_index(drop=True).to_frame()
+#vocab_df['id'] = vocab_df.index + 1
+
+with open('preprocessed.txt', "r") as infile:
     for line in infile:
         tokens = word_tokenize(line) # word_tokenize(line.lower())
+
         #print("Tokens:", tokens)
         for i in range(len(tokens)):
             if i == 0: # first
@@ -37,12 +43,14 @@ with open('source_text/'+source_text+'/preprocessed.txt', "r") as infile:
                     else: #  (more than one more)
                         trigrams[(tokens[i], tokens[i+1], tokens[i+2])] = trigrams.get((tokens[i], tokens[i+1], tokens[i+2]), 0) + 1
 
-
 # Create Probabilities hash map
-# Previous n-gram files (and the existing code to process them) use log10(P), so keep that convention here
 unigram_sums = sum(unigrams.values())
 bigram_sums = sum(bigrams.values())
 trigram_sums = sum(trigrams.values())
+
+# Normalize Probabilities
+# Previous n-gram files (and the existing code to process them) use log10(P), so keep that convention here
+# It's to make multiplication easier bc you can just add them as logs then exponentiate at the end
 unigram_probs = {x: math.log10(count / unigram_sums) for x, count in unigrams.items()}
 bigram_probs = {x: math.log10(count / bigram_sums) for x, count in bigrams.items()}
 trigram_probs = {x: math.log10(count / trigram_sums) for x, count in trigrams.items()}
@@ -74,16 +82,10 @@ trigram_df['x_j'] = trigram_df['x_j'].replace(id_map)
 trigram_df['x_k'] = trigram_df['x_k'].replace(id_map)
 
 
-#TODO Decide Directory Structure
-vocab_outfile = 'n-gram_counts/'+source_text+'/vocab.txt'
-unigram_outfile = 'n-gram_counts/'+source_text+'/unigram_counts.txt'
-bigram_outfile = 'n-gram_counts/'+source_text+'/bigram_counts.txt'
-trigram_outfile = 'n-gram_counts/'+source_text+'/trigram_counts.txt'
-
-vocab_df[['id', 'x_0']].to_csv(vocab_outfile, index=False, header=False, sep=' ')
-unigram_df[['x_0', 'e']].to_csv(unigram_outfile, index=False, header=False, sep=' ')
-bigram_df[['x_i', 'x_j', 'e']].to_csv(bigram_outfile, index=False, header=False, sep=' ')
-trigram_df[['x_i', 'x_j', 'x_k', 'e']].to_csv(trigram_outfile, index=False, header=False, sep=' ')
+vocab_df[['id', 'x_0']].to_csv('vocab.txt', index=False, header=False, sep=' ')
+unigram_df[['x_0', 'e']].to_csv('unigram_counts.txt', index=False, header=False, sep=' ')
+bigram_df[['x_i', 'x_j', 'e']].to_csv('bigram_counts.txt', index=False, header=False, sep=' ')
+trigram_df[['x_i', 'x_j', 'x_k', 'e']].to_csv('trigram_counts.txt', index=False, header=False, sep=' ')
 
 
     

@@ -34,6 +34,11 @@ def trigram_next(x_i, x_j):
 # consider weighted merging the bigram vs. trigram probs
 # i think rn it looks exclusively at trigram probs
 
+# Model Smoothing
+# 10x all the counts, then add scalar 1
+# Should keep proportions but get rid of absolute zero probability options
+# Workaround for the generation function needing to back out
+
 
 def recurse(word_indices):
   if (len(word_indices) == 0):
