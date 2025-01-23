@@ -22,6 +22,7 @@ def get_index(t_i):
 # Loss Function:
 def negative_log_likelihood(lambdas, epsi = 1e-10):
   l1, l2, l3 = lambdas
+  print(f"l1: {l1}, l2: {l2}, l3: {l3}")
   total_likelihood = 0
 
   # TODO: I think epsi gets doubled (if there's no bigram, there's obviously no trigram)
@@ -33,7 +34,7 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
 
       if i == 0:
           # TODO I think this is correct but revisit this
-          # I think about this as it drops out the bigram / trigram terms completely
+          # I think about this as dropping out the bigram / trigram terms completely
           # It messes up the comparisons, but not for the final sum
           bigram_prob = 0 # math.log10(epsi)
           trigram_prob = 0 # math.log10(epsi)
@@ -46,16 +47,12 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
           two_before = sentence[i-2]
           trigram_prob = trigram.get((get_index(two_before), get_index(one_before), get_index(t_i)), -100)
 
-      #if ( trigram_prob > math.log10(epsi)):
-      #  print(f"i: {i}, Trigram P: {trigram_prob}, Phrase: {two_before} {one_before} {t_i}")
-      #elif (bigram_prob > math.log10(epsi)):
-      # print(f"i: {i}, Bigram P: {bigram_prob}, Phrase: {one_before} {t_i}")
-      
-
       # Interpolate + update
-      prob = l1 * unigram_prob + l2 * bigram_prob + l3 * trigram_prob
+      prob = math.log10(l1 * (10**unigram_prob) + l2 * (10**bigram_prob) + l3 * (10**trigram_prob))
       total_likelihood += prob
-  return total_likelihood
+  
+  print(-(total_likelihood/len(observed_set)))
+  return -(total_likelihood/len(observed_set))
 
 
 # Optimization
