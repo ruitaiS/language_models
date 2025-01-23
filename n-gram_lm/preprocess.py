@@ -21,11 +21,11 @@ trigrams = {}
 with open(input_file, "r") as infile:
 
     # Training / Dev / Test Split
-    props = (8, 1, 1) # (Train, Dev, Test)
+    props = (8, 1, 1) # (Train, Dev, Test) normalized
+    props = tuple(p / sum(props) for p in props)
 
     lines = infile.readlines()
     random.shuffle(lines)
-    props = tuple(p / sum(props) for p in props)
     train_set = lines[:int(len(lines)*props[0])]
     dev_set = lines[int(len(lines)*props[0]):int(len(lines)*props[0]) + int(len(lines)*props[1])]
     test_set = lines[int(len(lines)*props[0]) + int(len(lines)*props[1]):]
@@ -86,6 +86,8 @@ unigram_probs = {x: math.log10(count / unigram_sums) for x, count in unigrams.it
 bigram_probs = {x: math.log10(count / bigram_sums) for x, count in bigrams.items()}
 trigram_probs = {x: math.log10(count / trigram_sums) for x, count in trigrams.items()}
 
+
+# TODO: Just use a hash; pandas is really slow and unnecessary
 # Convert to dataframes
 unigram_df = pd.DataFrame(list(unigram_probs.items()), columns=['x_0', 'e']).sort_values(by='x_0')
 bigram_df = pd.DataFrame(
@@ -101,7 +103,6 @@ trigram_df = pd.DataFrame(
 vocab_df = unigram_df['x_0'].sort_values().reset_index(drop=True).to_frame()
 vocab_df['id'] = vocab_df.index + 1
 
-# TODO: Optimize
 # Create mappings to id numbers
 # Replace token strings with id numbers
 id_map = dict(zip(vocab_df['x_0'], vocab_df['id']))
