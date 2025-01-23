@@ -46,7 +46,7 @@ for line in train_set:
     parts = line.split("\t")
     if len(parts) > 1:
         text = parts[1].strip()
-        tokens = word_tokenize(text) # word_tokenize(line.lower())
+        tokens = word_tokenize(text.lower()) # word_tokenize(text)
         #print("Tokens:", tokens)
         for i in range(len(tokens)):
             if i == 0: # first

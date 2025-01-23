@@ -8,38 +8,70 @@ from scipy.optimize import minimize
 unigram = data.get_unigram()
 bigram = data.get_bigram()
 trigram = data.get_trigram()
-get_index, get_token = data.get_lookups() # index from token, token from index
+xft, tfx = data.get_lookups() # index from token, token from index
 observed_set = data.get_dev_set()
 
+def get_index(t_i):
+  if t_i in xft:
+    return xft[t_i]
+  else:
+    # TODO: Decide on how to handle upper / lowercase versions
+    print(f"Not in vocab: {t_i}")
+    return -1
 
 # Loss Function:
 def negative_log_likelihood(lambdas, epsi = 1e-10):
-    l1, l2, l3 = lambdas
-    total_likelihood = 0
+  l1, l2, l3 = lambdas
+  total_likelihood = 0
 
-    # TODO: I think epsi gets doubled (if there's no bigram, there's obviously no trigram)
+  # TODO: I think epsi gets doubled (if there's no bigram, there's obviously no trigram)
 
 
-    for sentence in observed_set:
-      for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string, x_i for vocab index
+  for sentence in observed_set:
+    for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string representation, x_i for vocab index representation
+      t_i = t_i.lower()
+      
+      unigram_prob = unigram.get(get_index(t_i), epsi)
 
-        unigram_prob = unigram.get(get_index[t_i], epsi)
 
-        #if i == 0:
-        #  bigram_prob = 0  # Strictly zero and not epsilon bc it is the first word
-        #else:
-        #  bigram_prob = bigram.get((sentence[i-1], word), epsi)
-        #  
-        #if i == 1:
-        # trigram_prob = 0  # Strictly zero and not epsilon bc it is the first two words
-        #else:
-        #  trigram_prob = trigram.get((sentence[i-2], sentence[i-1], word), epsi)
-          
+      if i == 0:
+          bigram_prob = 0
+          trigram_prob = 0
+      else:
+        # i >= 1
+        one_before = sentence[i-1]
+
+        #print(f"last i: {get_index(one_before)}, last t_i: {one_before}")
+        bigram_prob = bigram.get((get_index(one_before), get_index(t_i)), epsi)
+        #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
+        trigram_prob = 0
+        if i > 1:
+          two_before = sentence[i-2]
+          trigram_prob = trigram.get((get_index(two_before), get_index(one_before), get_index(t_i)), epsi)
+          #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
+      
+      
+
+
+      '''unigram_prob = unigram.get(get_index[t_i], epsi)
+
+      if i == 0:
+        bigram_prob = 0  # Strictly zero and not epsilon bc it is the first word
+      else:
+        bigram_prob = 
         
-        # Interpolate + update
-        prob = l1 * unigram_prob #+ l2 * bigram_prob + l3 * trigram_prob
-        total_likelihood += prob
-    return total_likelihood
+      if i == 1:
+        trigram_prob = 0  # Strictly zero and not epsilon bc it is the first two words
+      else:
+        trigram_prob = trigram.get((sentence[i-2], sentence[i-1], word), epsi)
+      '''
+      if (bigram_prob > epsi or trigram_prob > epsi):
+        print(f"i: {i}, Phrase: {two_before}{one_before}{t_i}")
+      #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
+      # Interpolate + update
+      #prob = l1 * unigram_prob #+ l2 * bigram_prob + l3 * trigram_prob
+      #total_likelihood += prob
+  return total_likelihood
 
 
 # Optimization
