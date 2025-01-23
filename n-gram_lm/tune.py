@@ -16,7 +16,7 @@ def get_index(t_i):
     return xft[t_i]
   else:
     # TODO: Decide on how to handle upper / lowercase versions
-    print(f"Not in vocab: {t_i}")
+    #print(f"Not in vocab: {t_i}")
     return -1
 
 # Loss Function:
@@ -29,9 +29,7 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
 
   for sentence in observed_set:
     for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string representation, x_i for vocab index representation
-      t_i = t_i.lower()
-      
-      unigram_prob = unigram.get(get_index(t_i), epsi)
+      unigram_prob = unigram.get(get_index(t_i.lower()), epsi)
 
 
       if i == 0:
@@ -42,12 +40,12 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
         one_before = sentence[i-1]
 
         #print(f"last i: {get_index(one_before)}, last t_i: {one_before}")
-        bigram_prob = bigram.get((get_index(one_before), get_index(t_i)), epsi)
+        bigram_prob = bigram.get((get_index(one_before.lower()), get_index(t_i.lower())), epsi)
         #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
         trigram_prob = 0
         if i > 1:
           two_before = sentence[i-2]
-          trigram_prob = trigram.get((get_index(two_before), get_index(one_before), get_index(t_i)), epsi)
+          trigram_prob = trigram.get((get_index(two_before.lower()), get_index(one_before.lower()), get_index(t_i.lower())), epsi)
           #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
       
       
@@ -67,6 +65,8 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
       '''
       if (bigram_prob > epsi or trigram_prob > epsi):
         print(f"i: {i}, Phrase: {two_before}{one_before}{t_i}")
+      else:
+        print(unigram_prob)
       #print(f"Unigram P: {unigram_prob} , Bigram P: {bigram_prob}, Trigram P: {trigram_prob}")
       # Interpolate + update
       #prob = l1 * unigram_prob #+ l2 * bigram_prob + l3 * trigram_prob
