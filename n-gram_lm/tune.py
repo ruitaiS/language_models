@@ -28,6 +28,8 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
   # TODO: I think epsi gets doubled (if there's no bigram, there's obviously no trigram)
 
 
+
+
   for sentence in observed_set:
     for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string representation, x_i for vocab index representation
       unigram_prob = unigram.get(get_index(t_i), -100)
@@ -70,6 +72,8 @@ print(f"Message : {result.message}")
 # Optimal weights
 optimal_lambdas = result.x
 print("Optimal lambdas:", optimal_lambdas)
+
+# [9.49650121e-01 9.37157253e-18 5.03498791e-02]
 
 #testval = negative_log_likelihood(initial_lambdas)
 #print(testval)
