@@ -51,7 +51,7 @@ for line in train_set:
         #print("Tokens:", tokens)
         for i in range(len(tokens)):
             unigrams[tokens[i]] = unigrams.get(tokens[i], 0) + 1
-            if i == 0: # first
+            if i == 0: # First token is the second character of a bigram starting with '<s>'
                 unigrams['<s>'] = unigrams.get('<s>', 0) + 1
                 bigrams[('<s>',tokens[i])] = bigrams.get(('<s>',tokens[i]), 0) + 1            
                 if i < len(tokens) - 1: # (at least one more)
@@ -89,13 +89,14 @@ trigrams = {x: math.log10(count / trigram_sums) for x, count in trigrams.items()
 
 # Assign index mapping and create vocab hash
 xft = {token: index + 1 for index, token in enumerate(sorted(unigrams.keys()))} # xft eg. index from token
-vocab = {b:a for a,b in xft.items()}
+vocab = {b:a for a,b in xft.items()} # tfx token from index
 
-# TODO: check sequencing on the tuples
 # Convert counts hashes to all use indexes instead of token strings
 unigrams = {xft[unigram] : logprob for unigram, logprob in unigrams.items()}
 bigrams = {(xft[bigram[0]], xft[bigram[1]]): logprob for bigram, logprob in bigrams.items()}
 trigrams = {(xft[trigram[0]], xft[trigram[1]], xft[trigram[2]]): logprob for trigram, logprob in trigrams.items()}
+
+# TODO sort so humans can read too
 
 with open('text/b0_vocab.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')

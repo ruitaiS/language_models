@@ -16,20 +16,22 @@ vocab = pd.read_csv('text/b0_vocab.txt', sep=' ', header=None,
 '''
 
 def process_csv(filepath, dType=None):
+  # Converts csv to hash where last column is the value
+  # Other columns form a tuple acting as key
   output = {}
   with open(filepath, mode='r') as f:
     for row in csv.reader(f, delimiter=' '):
       if not dType:
-        output[tuple(row[:-1])] = row[-1] # Last column is the value; other columns form a tuple acting as key
+        output[tuple(row[:-1])] = row[-1]
       else:
         output[tuple(row[:-1])] = dType(row[-1])
   return output    
 
 def get_lookups():
-  # TODO: These abbreviations are confusing and retarded
+  # These abbreviations are confusing and retarded (Well too bad)
   # tfx >> token from index ; xft >> index from token
   tfx = process_csv('text/b0_vocab.txt')
-  tfx = {a[0]:b for a, b in tfx.items()}
+  tfx = {a[0]:b for a, b in tfx.items()} # TODO: This might be unnecessary; is a one element tuple real
   xft = {b:a for a, b in tfx.items()}
   print(f"tfx dtype: {type(next(iter(tfx.values())))}")
   print(f"xft dtype: {type(next(iter(xft.values())))}")
@@ -37,7 +39,7 @@ def get_lookups():
 
 def get_unigram():
   unigram = process_csv('text/b1_unigram_counts.txt', dType=float)
-  unigram = {a[0]:b for a, b in unigram.items()}
+  unigram = {a[0]:b for a, b in unigram.items()} # TODO: This might be unnecessary
   print(f'Unigram Length: {len(unigram)}')
   print(f"Unigram dtype: {type(next(iter(unigram.values())))}")
   return unigram
