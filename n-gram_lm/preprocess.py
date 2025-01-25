@@ -105,15 +105,15 @@ with open('text/b0_vocab.txt', 'w') as f:
 
 with open('text/b1_unigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
-    for x_i, e in unigrams.items():
+    for x_i, e in unigram_lp.items():
         writer.writerow([x_i, e])
 
 with open('text/b2_bigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
-    for (x_i, x_j), e in bigrams.items():
+    for (x_i, x_j), e in bigram_lp.items():
         writer.writerow([x_i, x_j, e])
 
 with open('text/b3_trigram_counts.txt', 'w') as f:
     writer = csv.writer(f, delimiter=' ')
-    for (x_i, x_j, x_k), e in trigrams.items():
+    for (x_i, x_j, x_k), e in trigram_lp.items():
         writer.writerow([x_i, x_j, x_k, e])
