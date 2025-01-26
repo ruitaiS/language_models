@@ -11,8 +11,7 @@ l1 = 0.19294876040543507
 l2 = 0.8070512544957388
 l3 = 0.0
 
-# TODO what is the deal with the janky log conversions back and forth
-def output(max_tokens=20):
+def output(max_tokens=200):
 	prob_distribution = {}
 	sentence = [xft['<s>']]
 	while len(sentence) < max_tokens:
@@ -26,13 +25,16 @@ def output(max_tokens=20):
 
 		# TODO: This sampling method is psychotic and mathematically unsound
 		leftover = random.uniform(0, sum(prob_distribution.values()))
+		print(sum(prob_distribution.values()))
 		for index, prob in prob_distribution.items():
 			leftover -= prob
 			if leftover <= 0 :
 				sentence.append(index)
-				print(sentence)
+				#print(sentence)
 				break
-
+		
+		if sentence[-1] == xft['</s>']:
+			break
 	return sentence
 			
 
