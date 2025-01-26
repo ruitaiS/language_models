@@ -30,13 +30,14 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
   # TODO: I think epsi gets doubled (if there's no bigram, there's obviously no trigram)
 
   for sentence in observed_set:
+    sentence_likelihood = 0
     for i, t_i in enumerate(sentence): # Let's adopt convention: t_i for token string representation, x_i for vocab index representation
       x_i = get_index(t_i)
 
       # TODO: double check log prob and raw prob
       fallback = -1000 # equiv to 1e-100 raw prob
       if x_i == -1:
-        print(f"Word {t_i} not in vocab")
+        #print(f"Word {t_i} not in vocab")
         unigram_prob = fallback # log prob
         bigram_prob = fallback #
         trigram_prob = fallback #
@@ -52,8 +53,8 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
           bigram_prob = bigram.get((x_i_min_1, x_i), -1000) # log prob
 
           # Check it's defaulting properly
-          if x_i_min_1 == -1:
-            print(f"Could not find bigram starting with {sentence[i-1]}. bigram_prob: {10**bigram_prob}") # raw prob
+          #if x_i_min_1 == -1:
+          #  print(f"Could not find bigram starting with {sentence[i-1]}. bigram_prob: {10**bigram_prob}") # raw prob
             #bigram_prob = fallback
           #else:
             #bigram_prob,l2 = bigram_prob,lambdas[1]
@@ -61,18 +62,19 @@ def negative_log_likelihood(lambdas, epsi = 1e-10):
           if i > 1:
             x_i_min_2 = sentence[i-2]
             trigram_prob = trigram.get((x_i_min_2, x_i_min_1, x_i), -1000)
-            if x_i_min_2 == -1:
-              print(f"Could not find trigram starting with {sentence[i-2]}. trigram_prob: {10**trigram_prob}") # raw prob
+            #if x_i_min_2 == -1:
+            #  print(f"Could not find trigram starting with {sentence[i-2]}. trigram_prob: {10**trigram_prob}") # raw prob
           
       # Interpolate + update
-      print(f"Uni: {unigram_prob}, Bi: {bigram_prob}, Tri: {trigram_prob}")
       raw_prob = l1 * (10**unigram_prob) + l2 * (10**bigram_prob) + l3 * (10**trigram_prob)
-      print(max(raw_prob, fallback))
-      log_prob = math.log10(max(raw_prob, fallback))
-      total_likelihood += log_prob
-  
+      #print(f"Uni: {unigram_prob}, Bi: {bigram_prob}, Tri: {trigram_prob}")
+      #print(f"l1: {l1}, l2: {l2}, l3: {l3}")
+      #print(f"Raw: {raw_prob}, fallback: {1e-10}, max: {max(raw_prob, 1e-10)}")
+      log_prob = math.log10(max(raw_prob, 1e-10))
+      sentence_likelihood += log_prob
+    total_likelihood += sentence_likelihood
   print(total_likelihood/len(observed_set))
-  return (total_likelihood/len(observed_set))
+  return -(total_likelihood/len(observed_set))
 
 
 # Optimization
@@ -92,6 +94,7 @@ optimal_lambdas = result.x
 print("Optimal lambdas:", optimal_lambdas)
 
 # [9.49650121e-01 9.37157253e-18 5.03498791e-02]
+#l1: 0.19294876040543507, l2: 0.8070512544957388, l3: 0.0
 
 #testval = negative_log_likelihood(initial_lambdas)
 #print(testval)

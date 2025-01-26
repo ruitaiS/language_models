@@ -6,7 +6,10 @@ bigram = data.get_bigram()
 trigram = data.get_trigram()
 xft, tfx = data.get_lookups() # index from token, token from index
 
-l1, l2, l3 = (9.49650121e-01, 9.37157253e-18, 5.03498791e-02)
+#l1, l2, l3 = (9.49650121e-01, 9.37157253e-18, 5.03498791e-02)
+l1 = 0.19294876040543507
+l2 = 0.8070512544957388
+l3 = 0.0
 
 # TODO what is the deal with the janky log conversions back and forth
 def output(max_tokens=20):
