@@ -75,11 +75,18 @@ print(f"{len(unigram_counts)} unigrams in training set")
 print(f"{len(bigram_counts)} bigrams in training set")
 print(f"{len(trigram_counts)} trigrams in training set")
 
+# Assign index mapping and create vocab hash
+xft = {token: index + 1 for index, token in enumerate(sorted(unigram_counts.keys()))} # xft eg. index from token
+vocab = {b:a for a,b in xft.items()} # tfx token from index
+
 # Create Probabilities hash map
-unigram_sum = sum(unigram_counts.values())
-unigram_probs = {unigram: count / unigram_sum for unigram, count in unigram_counts.items()}
 bigram_probs = {bigram: count / unigram_counts[bigram[0]] for bigram, count in bigram_counts.items()}
 trigram_probs = {trigram: count / bigram_counts[(trigram[0], trigram[1])] for trigram, count in trigram_counts.items()}
+
+del unigram_counts['<s>'] # TODO: I think this is ok after the bigram / trigram probs are calculated.
+del unigram_counts['</s>'] # makes sure the unigram isn't randomly dropping these into the phrase
+unigram_sum = sum(unigram_counts.values())
+unigram_probs = {unigram: count / unigram_sum for unigram, count in unigram_counts.items()}
 
 # Normalize Probabilities
 # Previous n-gram files (and the existing code to process them) use log10(P), so keep that convention here
@@ -87,10 +94,6 @@ trigram_probs = {trigram: count / bigram_counts[(trigram[0], trigram[1])] for tr
 unigram_lp = {unigram: math.log10(prob) for unigram, prob in unigram_probs.items()}
 bigram_lp = {bigram: math.log10(prob) for bigram, prob in bigram_probs.items()}
 trigram_lp = {trigram: math.log10(prob) for trigram, prob in trigram_probs.items()}
-
-# Assign index mapping and create vocab hash
-xft = {token: index + 1 for index, token in enumerate(sorted(unigram_lp.keys()))} # xft eg. index from token
-vocab = {b:a for a,b in xft.items()} # tfx token from index
 
 # Convert counts hashes to all use indexes instead of token strings
 unigram_lp = {xft[unigram] : logprob for unigram, logprob in unigram_lp.items()}
