@@ -12,7 +12,9 @@ xft, tfx = data.get_lookups() # index from token, token from index
 #l2 = 0.8070512544957388
 #l3 = 0.0
 
-l1, l2, l3=(1.57446217e-01, 8.42553783e-01, 1.36187719e-14)
+#l1, l2, l3=(1.57446217e-01, 8.42553783e-01, 1.36187719e-14)
+
+l1, l2, l3 = (0.14434065, 0.48567127, 0.36998808)
 fallback = -100
 
 def output(max_tokens=200):
@@ -20,10 +22,14 @@ def output(max_tokens=200):
 	sentence = [xft['<s>']]
 	while len(sentence) < max_tokens:
 		for index in tfx.keys():
+			unigram_lp = unigram.get(index, fallback)
 			if len(sentence) == 1:
-				prob = l1 * (10**unigram.get(index, fallback)) + l2 * (10**bigram.get((xft['<s>'], index), fallback))
+				bigram_lp = bigram.get((xft['<s>'], index), fallback)
+				prob = l1 * (10**unigram_lp) + l2 * (10**bigram_lp)
 			else:
-				prob = l1 * (10**unigram.get(index, fallback)) + l2 * (10**bigram.get((sentence[-1], index), fallback)) + l3 * (10**bigram.get((sentence[-2], sentence[-1], index), fallback))
+				bigram_lp = bigram.get((sentence[-1], index), fallback)
+				trigram_lp = trigram.get((sentence[-2], sentence[-1], index), fallback)
+				prob = l1 * (10**unigram_lp) + l2 * (10**bigram_lp) + l3 * (10**trigram_lp)
 			prob_distribution[index] = prob
 		#print(sum(prob_distribution.values()))
 

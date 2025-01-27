@@ -24,8 +24,10 @@ def get_index(t_i):
 # Loss Function:
 def negative_log_likelihood(params): # equiv to 1e-1000 raw prob
   l1, l2, l3, fallback = params
-  print(f"l1: {params[0]}, l2: {params[1]}, l3: {params[2]}, fallback: {params[3]}")
+  ##print(f"l1: {params[0]}, l2: {params[1]}, l3: {params[2]}, fallback: {params[3]}")
   total_likelihood = 0
+
+  not_in_vocab = 0
 
   for sentence in observed_set:
     sentence_likelihood = 0
@@ -34,6 +36,7 @@ def negative_log_likelihood(params): # equiv to 1e-1000 raw prob
       x_i = get_index(t_i)
       if x_i == -1:
         #print(f"Word {t_i} not in vocab")
+        not_in_vocab += 1
         unigram_prob = fallback # log prob
         bigram_prob = fallback #
         trigram_prob = fallback #
@@ -48,8 +51,14 @@ def negative_log_likelihood(params): # equiv to 1e-1000 raw prob
         else:
           x_i_min_1 = get_index(sentence[i-1])
           bigram_prob = bigram.get((x_i_min_1, x_i), fallback) # log prob
-          x_i_min_2 = sentence[i-2]
+          x_i_min_2 = get_index(sentence[i-2])
           trigram_prob = trigram.get((x_i_min_2, x_i_min_1, x_i), fallback)
+
+          if bigram_prob > fallback:
+            print(f"Nonzero Bigram: {bigram_prob}")
+
+          if trigram_prob > fallback:
+            print(f"Nonzero Trigram: {trigram_prob}")
       #print(f"Uni: {unigram_prob}, Bi: {bigram_prob}, Tri: {trigram_prob}")
       raw_prob = l1 * (10**unigram_prob) + l2 * (10**bigram_prob) + l3 * (10**trigram_prob)
       #print(f"l1: {l1}, l2: {l2}, l3: {l3}")
@@ -57,7 +66,7 @@ def negative_log_likelihood(params): # equiv to 1e-1000 raw prob
       log_prob = math.log10(max(raw_prob, 1e-10))
       sentence_likelihood += log_prob
     total_likelihood += sentence_likelihood
-  print(total_likelihood/len(observed_set))
+  ##print(f"P: {total_likelihood/len(observed_set)}, Not In Vocab: {not_in_vocab}")
   return -(total_likelihood/len(observed_set))
 
 
