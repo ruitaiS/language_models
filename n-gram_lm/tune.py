@@ -41,6 +41,7 @@ def negative_log_likelihood(params):
           bigram_prob = bigram.get((x_i_min_1, x_i), fallback)
           trigram_prob = trigram.get((x_i_min_2, x_i_min_1, x_i), fallback)
           if int(x_i) <= 10 or int(x_i) == 9833: # Ignore unigram probs for punctuation
+            #raw_prob = (l2 * (10**bigram_prob) + l3 * (10**trigram_prob))/(1-l1)
             raw_prob = l2 * (10**bigram_prob) + l3 * (10**trigram_prob)
           else:
             raw_prob = l1 * (10**unigram_prob) + l2 * (10**bigram_prob) + l3 * (10**trigram_prob)
