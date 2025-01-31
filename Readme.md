@@ -1,4 +1,4 @@
-Probabilistic sentence generation and correction
+Some simple language model implementations using n-gram and transformer architectures
 
 ### Setup
 ```bash
