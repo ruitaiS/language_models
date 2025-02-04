@@ -45,4 +45,3 @@ V = W_V(X)
 # Feedforward Layer
 # Layer Norm
 # Residual Stream
-# 
