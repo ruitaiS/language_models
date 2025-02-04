@@ -34,8 +34,8 @@ unigram['x_0'] -= 1
 bigram[['x_i', 'x_j']] -= 1
 trigram[['x_i', 'x_j', 'x_k']] -= 1
 
-bigram = bigram[['x_i', 'x_j', 'normalized_P']]
-trigram = trigram[['x_i', 'x_j', 'x_k', 'normalized_P']]
+bigram = bigram[['x_i', 'x_j', 'normalized_P', 'e']]
+trigram = trigram[['x_i', 'x_j', 'x_k', 'normalized_P', 'e']]
 
 def get_vocab():
   print(f'Vocab Length: {len(vocab)}')

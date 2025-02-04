@@ -37,3 +37,12 @@ X = token_embeddings + pos_embeddings # Composite Embeddings (Word + position)
 W_Q = nn.Embedding(d, d_k)
 W_K = nn.Embedding(d, d_k)
 W_V = nn.Embedding(d, d_v)
+
+Q = W_Q(X)
+K = W_K(X)
+V = W_V(X)
+
+# Feedforward Layer
+# Layer Norm
+# Residual Stream
+# 
