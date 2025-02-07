@@ -11,7 +11,7 @@ for mha:
 d_k == d_v == head_size == d / num_heads
 '''
 
-class SSA(nn.Module): # Single / Self Attention
+class SHA(nn.Module): # Single Head Attention
 	def __init__(self, d, d_k, d_v):
 		super().__init__()
 		self.W_Q = nn.Linear(d, d_k)
@@ -37,3 +37,47 @@ class SSA(nn.Module): # Single / Self Attention
 	def scaled_dot_prod(self, Q, K):
 		N, d_k = Q.shape
 		return torch.matmul(Q, K.T) / (d_k ** 0.5)
+
+class MHA(nn.Module): # Multi-Headed Attention
+	def __init__(self):
+		print('todo')
+	def forward(self):
+		print('todo')
+
+class FFN():
+	def __init__(self):
+		print('todo')
+	def forward(self):
+		# ReLu(xW1+b1)W2 + b2
+		# (whatever tf that means)
+		# pg. 9
+		print('todo')
+
+class LayerNorm():
+	def __init__(self):
+		print('todo')
+	def forward(self):
+		# pg. 9
+		print('todo')
+
+class TransformerBlock (nn.Module):
+	def __init__(self):
+		print('todo')
+	def forward(self):
+		# pg. 10
+		# with input x:
+		# residual = x
+		# x = LayerNorm(x)
+		# x = MHA(x)
+		# x += residual
+		# residual = x
+		# x = LayerNorm(x)
+		# x = FFN(x)
+		# x += residual
+		print('todo')
+
+class LanguageModel(nn.Module):
+	def __init__(self):
+		print('todo')
+	def forward(self):
+		print('todo')
