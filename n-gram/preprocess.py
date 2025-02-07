@@ -15,7 +15,7 @@ from nltk.tokenize import word_tokenize
 
 # Might be interesting to explore sentence sequences. Maybe some groups of sentences go together
 
-input_file = "text/akjv.txt"
+input_file = "datasets/akjv.txt"
 unigram_counts = {}
 bigram_counts = {}
 trigram_counts = {}

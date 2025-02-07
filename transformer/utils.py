@@ -5,7 +5,7 @@ from torch.nn import functional as F
 block_size = 8
 vocab_size = 100
 
-def mask (input_matrix):
+'''def mask (input_matrix):
 	rows, cols = input_matrix.shape
 	if rows != cols:
 		raise ValueError(f"Matrix is not square: {rows}x{cols}")
@@ -15,16 +15,16 @@ def mask (input_matrix):
 
 def scaled_dot_prod(Q, K):
 	N, d_k = Q.shape
-	return torch.matmul(Q, K.T) / d_k ** 0.5
-
+	return torch.matmul(Q, K.T) / (d_k ** 0.5)'''
 
 N = 10
 test_matrix = torch.zeros((N,N))
 print(mask(test_matrix))
 
-d = 32 # embedding vector dimensions
+'''d = 32 # embedding vector dimensions
 d_k = 64 # query\key vector dimensions
-d_v = 64 # value vector dimensions (Usually d_v = d_k)
+d_v = 64 # value vector dimensions (Usually d_v = d_k)'''
+
 E = nn.Embedding(vocab_size, d) # Embedding table E
 P = nn.Embedding(block_size, d) # Positional Embedding table P
 
@@ -34,14 +34,15 @@ token_embeddings = E(indices)
 pos_embeddings = P(positions)
 X = token_embeddings + pos_embeddings # Composite Embeddings (Word + position)
 
-W_Q = nn.Embedding(d, d_k)
-W_K = nn.Embedding(d, d_k)
-W_V = nn.Embedding(d, d_v)
+'''W_Q = nn.Linear(d, d_k)
+W_K = nn.Linear(d, d_k)
+W_V = nn.Linear(d, d_v)'''
 
-Q = W_Q(X)
-K = W_K(X)
-V = W_V(X)
+'''Q = W_Q(X) # Queries Matrix
+K = W_K(X) # Keys Matrix
+V = W_V(X) # Values Matrix'''
 
 # Feedforward Layer
 # Layer Norm
 # Residual Stream
+
