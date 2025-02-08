@@ -76,8 +76,32 @@ class TransformerBlock (nn.Module):
 		# x += residual
 		print('todo')
 
+class EmbeddingLayer(nn.Module):
+	def __init__(self, d, vocab_size, block_size):
+		super().__init__()
+		self.E = nn.Embedding(vocab_size, d) # Embedding table E
+		self.P = nn.Embedding(block_size, d) # Positional Embedding table P
+
+	def forward(self, tokens):
+		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
+		# tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
+
+		batch_size, seq_len = tokens.shape
+		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
+		
+		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
+		return X
+
 class LanguageModel(nn.Module):
 	def __init__(self):
+		
 		print('todo')
+		# embedding layer
+		# blocks - set of TransformerBlock instances
+		# 
 	def forward(self):
 		print('todo')
+
+block_size = 8
+vocab_size = 100
+d = 32 # embedding dimensions
