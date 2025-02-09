@@ -60,18 +60,25 @@ class FFN(nn.Module):
 		return X
 
 class LayerNorm(nn.Module):
-	def __init__(self):
+	def __init__(self, d):
 		super().__init__()
+		self.gain = nn.Parameter(torch.ones(d))
+		self.offset = nn.Parameter(torch.zeros(d))
 		print('layernorm init')
 	def forward(self, X):
-		# pg. 9
+		# X.shape = (batch_size, seq_length, embedding dimension d)
+		# Normalize each d-length embedding vector in X:
+		means = X.mean(dim=-1, keepdim=True) # dim=-1 is d dimension
+		sdevs = X.std(dim=-1, unbiased=False, keepdim=True)
+		X = self.gain * ((X - means) / (sdevs + 1e-5)) + self.offset
 		print('layernorm forward')
 		return X
 
 class TransformerBlock (nn.Module):
-	def __init__(self):
+	def __init__(self, d):
 		super().__init__()
-		self.layernorm = LayerNorm()
+		self.norm1 = LayerNorm(d)
+		self.norm2 = LayerNorm(d)
 		self.mha = MHA()
 		self.ffn = FFN()
 		print('transformer init')
@@ -81,11 +88,11 @@ class TransformerBlock (nn.Module):
 		# pg. 10
 		# with input x:
 		residual = X
-		X = self.layernorm(X)
+		X = self.norm1(X)
 		X = self.mha(X)
 		X += residual
 		residual = X
-		X = self.layernorm(X)
+		X = self.norm2(X)
 		X = self.ffn(X)
 		X += residual
 		print('transformer forward')
@@ -105,17 +112,19 @@ class EmbeddingLayer(nn.Module):
 		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
 		
 		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
-		return X
+		return X # X.shape = (batch_size, seq_len, d)
 	
 class LanguageModelHead(nn.Module):
 	def __init__(self):
+		super().__init__()
 		# converts everything back
 		# pg. 16-18
 		# unembedding layer
 		# softmax
-		print('todo')
-	def forward(self):
-		print('todo')
+		print('lm head init')
+	def forward(self, X):
+		print('lm head forward')
+		return X
 
 class LanguageModel(nn.Module):
 	def __init__(self):
