@@ -49,13 +49,20 @@ class MHA(nn.Module): # Multi-Headed Attention
 		return X
 
 class FFN(nn.Module):
-	def __init__(self):
+	def __init__(self, d):
 		super().__init__()
+		# d >> dff >> d
+		dff = 4*d
+
+		self.W1 = nn.Parameter(torch.randn(d, dff))
+		self.b1 = nn.Parameter(torch.zeros(dff))
+
+		self.W2 = nn.Parameter(torch.randn(dff, d))
+		self.b2 = nn.Parameter(torch.zeros(d))
 		print('ffn init')
 	def forward(self, X):
-		# ReLu(xW1+b1)W2 + b2
-		# (whatever tf that means)
-		# pg. 9
+		# ReLu(xW1+b1)W2 + b2	pg. 9
+		X = torch.matmul(torch.relu(torch.matmul(X, self.W1) + self.b1), self.W2) + self.b2
 		print('ffn forward')
 		return X
 
@@ -79,8 +86,8 @@ class TransformerBlock (nn.Module):
 		super().__init__()
 		self.norm1 = LayerNorm(d)
 		self.norm2 = LayerNorm(d)
+		self.ffn = FFN(d)
 		self.mha = MHA()
-		self.ffn = FFN()
 		print('transformer init')
 	def forward(self, X):
 		print(X)
@@ -136,6 +143,6 @@ class LanguageModel(nn.Module):
 	def forward(self):
 		print('todo')
 
-block_size = 8
-vocab_size = 100
-d = 32 # embedding dimensions
+#block_size = 8
+#vocab_size = 100
+#d = 32 # embedding dimensions
