@@ -49,22 +49,28 @@ class MHA(nn.Module): # Multi-Headed Attention
 		return X
 
 class FFN(nn.Module):
-	def __init__(self, d):
+	def __init__(self, d, d_hidden = None):
 		super().__init__()
+		# d_hidden is the number of nodes / dimensions on the hidden layer
+		# (Book calls this dff)
+		# W1, b1 take us to hidden layer
+		# W2, b2 take us back to number of embed feature dimensions d
 		# d >> dff >> d
-		dff = 4*d
+		if not d_hidden or d_hidden <= d:
+			d_hidden = 4*d
 
-		self.W1 = nn.Parameter(torch.randn(d, dff))
-		self.b1 = nn.Parameter(torch.zeros(dff))
+		self.W1 = nn.Parameter(torch.randn(d, d_hidden))
+		self.b1 = nn.Parameter(torch.zeros(d_hidden))
 
-		self.W2 = nn.Parameter(torch.randn(dff, d))
+		self.W2 = nn.Parameter(torch.randn(d_hidden, d))
 		self.b2 = nn.Parameter(torch.zeros(d))
 		print('ffn init')
 	def forward(self, X):
-		# ReLu(xW1+b1)W2 + b2	pg. 9
-		X = torch.matmul(torch.relu(torch.matmul(X, self.W1) + self.b1), self.W2) + self.b2
+		# ReLu(xW1+b1)W2 + b2
+		hidden = torch.relu(torch.matmul(X, self.W1) + self.b1)
+		output = torch.matmul(hidden, self.W2) + self.b2
 		print('ffn forward')
-		return X
+		return output
 
 class LayerNorm(nn.Module):
 	def __init__(self, d):
