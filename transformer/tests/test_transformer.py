@@ -6,6 +6,7 @@ from main import TransformerBlock, EmbeddingLayer
 import random
 
 d = 32
+total_heads = 4
 vocab_size = 10000
 block_size = 64
 
@@ -17,7 +18,7 @@ def embedding_layer():
 
 @pytest.fixture
 def transformer_block():
-    return TransformerBlock(d)
+    return TransformerBlock(d, total_heads)
 
 def test_output_shape(transformer_block, embedding_layer):
     batch_size = random.randint(1, max_batches)

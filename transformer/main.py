@@ -2,22 +2,14 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-'''
-d = 32 # embedding vector dimensions
-d_k = 64 # query\key vector dimensions
-d_v = 64 # value vector dimensions (Usually d_v = d_k)
-
-for mha:
-d_k == d_v == head_size == d / num_heads
-'''
-
 class SHA(nn.Module): # Single Head Attention
-	def __init__(self, d, d_k, d_v, mask = True):
+	def __init__(self, d, d_k, d_v, use_mask = True):
 		super().__init__()
-		self.use_mask = mask
+		self.use_mask = use_mask
 		self.W_Q = nn.Linear(d, d_k)
 		self.W_K = nn.Linear(d, d_k)
 		self.W_V = nn.Linear(d, d_v)
+		#self.W_V = nn.Linear(d_v, d)
 		print('sha init')
 
 	def forward(self, X):
@@ -26,20 +18,21 @@ class SHA(nn.Module): # Single Head Attention
 		V = self.W_V(X) # Values Matrix
 
 		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K)), dim=-1)
+		product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
+		#output = self.W_0(product) # (batch_size, seq_length, d)
 		print('sha forward')
-		return torch.matmul(weights, V) # (batch_size, seq_length, d_v)
+		return product #output
 
 	def mask (self, input):
 		if not self.use_mask: return input
 
 		batch_size, rows, cols = input.shape
-		if rows != cols:
-			raise ValueError(f"Matrix is not square: {rows}x{cols}")
+		assert rows == cols, f"Matrix is not square: {rows}x{cols}"
 		# TODO: Double check if this is flipped the right way
 		tril = torch.tril(torch.ones(rows, rows, dtype=torch.bool))
 		# print(tril)
-		mask = tril.unsqueeze(0)
-		return input.masked_fill(mask, float('-inf'))
+		mask = tril.unsqueeze(0).expand(batch_size, -1, -1)
+		return input.masked_fill(~mask, float('-inf'))
 
 	def scaled_dot_prod(self, Q, K):
 		batch_size, seq_len, d_k = Q.shape
@@ -49,12 +42,18 @@ class SHA(nn.Module): # Single Head Attention
 		return output 
 
 class MHA(nn.Module): # Multi-Headed Attention
-	def __init__(self):
+	def __init__(self, d, total_heads, use_mask = True):
 		super().__init__()
+		assert d % total_heads == 0, "d must be divisible by total number of heads"
+		self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
+		self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, use_mask) for _ in range(total_heads)])
+		self.W_0 = nn.Linear(d, d)
 		print('mha init')
 	def forward(self, X):
+		output = torch.cat([head(X) for head in self.heads], dim=-1)
+		output = self.W_0(output)
 		print('mha forward')
-		return X
+		return output
 
 class FFN(nn.Module):
 	def __init__(self, d, d_hidden = None):
@@ -73,6 +72,7 @@ class FFN(nn.Module):
 		self.W2 = nn.Parameter(torch.randn(d_hidden, d))
 		self.b2 = nn.Parameter(torch.zeros(d))
 		print('ffn init')
+
 	def forward(self, X):
 		# ReLu(xW1+b1)W2 + b2
 		hidden = torch.relu(torch.matmul(X, self.W1) + self.b1)
@@ -96,12 +96,12 @@ class LayerNorm(nn.Module):
 		return X
 
 class TransformerBlock (nn.Module):
-	def __init__(self, d):
+	def __init__(self, d, total_heads):
 		super().__init__()
 		self.norm1 = LayerNorm(d)
 		self.norm2 = LayerNorm(d)
 		self.ffn = FFN(d)
-		self.mha = MHA()
+		self.mha = MHA(d, total_heads)
 		print('transformer init')
 	def forward(self, X):
 		print(X)
