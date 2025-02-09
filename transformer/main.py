@@ -17,6 +17,7 @@ class SHA(nn.Module): # Single Head Attention
 		self.W_Q = nn.Linear(d, d_k)
 		self.W_K = nn.Linear(d, d_k)
 		self.W_V = nn.Linear(d, d_v)
+		print('sha init')
 
 	def forward(self, X):
 		Q = self.W_Q(X) # Queries Matrix
@@ -24,6 +25,7 @@ class SHA(nn.Module): # Single Head Attention
 		V = self.W_V(X) # Values Matrix
 
 		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K)), dim=-1)
+		print('sha forward')
 		return torch.matmul(weights, V)
 
 	def mask (self, input_matrix):
@@ -40,41 +42,54 @@ class SHA(nn.Module): # Single Head Attention
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self):
-		print('todo')
-	def forward(self):
-		print('todo')
+		super().__init__()
+		print('mha init')
+	def forward(self, X):
+		print('mha forward')
+		return X
 
-class FFN():
+class FFN(nn.Module):
 	def __init__(self):
-		print('todo')
-	def forward(self):
+		super().__init__()
+		print('ffn init')
+	def forward(self, X):
 		# ReLu(xW1+b1)W2 + b2
 		# (whatever tf that means)
 		# pg. 9
-		print('todo')
+		print('ffn forward')
+		return X
 
-class LayerNorm():
+class LayerNorm(nn.Module):
 	def __init__(self):
-		print('todo')
-	def forward(self):
+		super().__init__()
+		print('layernorm init')
+	def forward(self, X):
 		# pg. 9
-		print('todo')
+		print('layernorm forward')
+		return X
 
 class TransformerBlock (nn.Module):
 	def __init__(self):
-		print('todo')
-	def forward(self):
+		super().__init__()
+		self.layernorm = LayerNorm()
+		self.mha = MHA()
+		self.ffn = FFN()
+		print('transformer init')
+	def forward(self, X):
+		print(X)
+
 		# pg. 10
 		# with input x:
-		# residual = x
-		# x = LayerNorm(x)
-		# x = MHA(x)
-		# x += residual
-		# residual = x
-		# x = LayerNorm(x)
-		# x = FFN(x)
-		# x += residual
-		print('todo')
+		residual = X
+		X = self.layernorm(X)
+		X = self.mha(X)
+		X += residual
+		residual = X
+		X = self.layernorm(X)
+		X = self.ffn(X)
+		X += residual
+		print('transformer forward')
+		return X
 
 class EmbeddingLayer(nn.Module):
 	def __init__(self, d, vocab_size, block_size):
@@ -91,6 +106,16 @@ class EmbeddingLayer(nn.Module):
 		
 		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
 		return X
+	
+class LanguageModelHead(nn.Module):
+	def __init__(self):
+		# converts everything back
+		# pg. 16-18
+		# unembedding layer
+		# softmax
+		print('todo')
+	def forward(self):
+		print('todo')
 
 class LanguageModel(nn.Module):
 	def __init__(self):
@@ -98,7 +123,7 @@ class LanguageModel(nn.Module):
 		print('todo')
 		# embedding layer
 		# blocks - set of TransformerBlock instances
-		# 
+		# Language model head
 	def forward(self):
 		print('todo')
 
