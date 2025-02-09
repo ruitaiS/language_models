@@ -12,8 +12,9 @@ d_k == d_v == head_size == d / num_heads
 '''
 
 class SHA(nn.Module): # Single Head Attention
-	def __init__(self, d, d_k, d_v):
+	def __init__(self, d, d_k, d_v, mask = True):
 		super().__init__()
+		self.use_mask = mask
 		self.W_Q = nn.Linear(d, d_k)
 		self.W_K = nn.Linear(d, d_k)
 		self.W_V = nn.Linear(d, d_v)
@@ -26,19 +27,26 @@ class SHA(nn.Module): # Single Head Attention
 
 		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K)), dim=-1)
 		print('sha forward')
-		return torch.matmul(weights, V)
+		return torch.matmul(weights, V) # (batch_size, seq_length, d_v)
 
-	def mask (self, input_matrix):
-		rows, cols = input_matrix.shape
+	def mask (self, input):
+		if not self.use_mask: return input
+
+		batch_size, rows, cols = input.shape
 		if rows != cols:
 			raise ValueError(f"Matrix is not square: {rows}x{cols}")
-		else:
-			tril = torch.tril(torch.ones(rows, rows))
-			return input_matrix.masked_fill(tril == 0, float('-inf'))
+		# TODO: Double check if this is flipped the right way
+		tril = torch.tril(torch.ones(rows, rows, dtype=torch.bool))
+		# print(tril)
+		mask = tril.unsqueeze(0)
+		return input.masked_fill(mask, float('-inf'))
 
 	def scaled_dot_prod(self, Q, K):
-		N, d_k = Q.shape
-		return torch.matmul(Q, K.T) / (d_k ** 0.5)
+		batch_size, seq_len, d_k = Q.shape
+		output = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
+		# (batch_size,seq_len,seq_len)
+		# Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
+		return output 
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self):

@@ -14,6 +14,10 @@ venv\Scripts\activate
 #Install Requirements into venv:
 pip install -r requirements.txt
 
-# (Optional) Install Pytest if running tests
+# (Optional) Testing:
+# Install pytest
 pip install pytest
+
+# Run tests
+pytest path/to/test_file.py
 ```
