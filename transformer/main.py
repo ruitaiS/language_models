@@ -3,13 +3,14 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class SHA(nn.Module): # Single Head Attention
+	# d_k and d_v also known as head dimension, d_h, in MHA context
 	def __init__(self, d, d_k, d_v, use_mask = True):
 		super().__init__()
 		self.use_mask = use_mask
 		self.W_Q = nn.Linear(d, d_k)
 		self.W_K = nn.Linear(d, d_k)
 		self.W_V = nn.Linear(d, d_v)
-		#self.W_V = nn.Linear(d_v, d)
+		#self.W_0 = nn.Linear(d_v, d)
 		print('sha init')
 
 	def forward(self, X):
@@ -19,10 +20,23 @@ class SHA(nn.Module): # Single Head Attention
 
 		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K)), dim=-1)
 		product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
-		#output = self.W_0(product) # (batch_size, seq_length, d)
 		print('sha forward')
-		return product #output
+		
+		# MHA class contains its own W_0 which aggregates across the attention heads
+		# Uncomment if doing explicitly single headed attention
+		#output = self.W_0(product) # (batch_size, seq_length, d)
+		#output
 
+		return product
+
+	def scaled_dot_prod(self, Q, K):
+		batch_size, seq_len, d_k = Q.shape
+		output = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
+		# (batch_size,seq_len,seq_len)
+		# Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
+		# Masking drops the scores for tokens that come after the current one
+		return output
+	
 	def mask (self, input):
 		if not self.use_mask: return input
 
@@ -33,13 +47,6 @@ class SHA(nn.Module): # Single Head Attention
 		# print(tril)
 		mask = tril.unsqueeze(0).expand(batch_size, -1, -1)
 		return input.masked_fill(~mask, float('-inf'))
-
-	def scaled_dot_prod(self, Q, K):
-		batch_size, seq_len, d_k = Q.shape
-		output = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
-		# (batch_size,seq_len,seq_len)
-		# Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
-		return output 
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self, d, total_heads, use_mask = True):
