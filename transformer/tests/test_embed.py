@@ -25,9 +25,11 @@ def test_embeddings(embedding_layer):
     token_embeddings = embedding_layer.E(tokens)
     pos_embeddings = embedding_layer.P(positions)
 
+    # Check token embeddings are correct shape
     assert token_embeddings.shape == (batch_size, seq_len, embed_dim), \
         f"Expected ({batch_size}, {seq_len}, {embed_dim}), got {token_embeddings.shape}"
     
+    # Check position embeddings are correct shape
     assert pos_embeddings.shape == (batch_size, seq_len, embed_dim), \
         f"Expected ({batch_size}, {seq_len}, {embed_dim}), got {pos_embeddings.shape}"
 

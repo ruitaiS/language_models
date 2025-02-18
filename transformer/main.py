@@ -127,10 +127,10 @@ class TransformerBlock (nn.Module):
 		return X
 
 class EmbeddingLayer(nn.Module):
-	def __init__(self, d, vocab_size, block_size):
+	def __init__(self, d, vocab_size, seq_len):
 		super().__init__()
 		self.E = nn.Embedding(vocab_size, d) # Embedding table E
-		self.P = nn.Embedding(block_size, d) # Positional Embedding table P
+		self.P = nn.Embedding(seq_len, d) # Positional Embedding table P
 
 	def forward(self, tokens):
 		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
@@ -156,6 +156,7 @@ class LanguageModelHead(nn.Module):
 
 class LanguageModel(nn.Module):
 	def __init__(self):
+		super().__init__()
 		
 		print('todo')
 		# embedding layer

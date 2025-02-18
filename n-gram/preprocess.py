@@ -15,7 +15,7 @@ from nltk.tokenize import word_tokenize
 
 # Might be interesting to explore sentence sequences. Maybe some groups of sentences go together
 
-input_file = "datasets/akjv.txt"
+input_file = "../datasets/akjv.txt"
 unigram_counts = {}
 bigram_counts = {}
 trigram_counts = {}
@@ -71,6 +71,7 @@ for line in train_set:
                         trigram_counts[(tokens[i], tokens[i+1], tokens[i+2])] = trigram_counts.get((tokens[i], tokens[i+1], tokens[i+2]), 0) + 1
     else:
         print(f'Unprocessed Line: {line}')
+unigram_counts['<?>'] = 0
 
 print(f"{len(unigram_counts)} unigrams in training set")
 print(f"{len(bigram_counts)} bigrams in training set")
