@@ -64,6 +64,22 @@ def test_linear_transforms(single_attention):
 
     # TODO: Check values change during learning
 
+def test_masking(single_attention):
+    scores = torch.randn(batch_size, seq_len, seq_len, dtype=torch.float32)
+    masked_scores = single_attention.mask(scores)
+
+    for i in range(batch_size): # i indexes sequences in the batch
+        for j in range(seq_len): # j is the index for the attention vector for the jth token in the sequence
+            for k in range(seq_len): # k is the index on the attention vector that contains the attention score from the jth token to the kth token in the sequence
+                # Think of j as the current token, and k as the one you're looking at
+                # If k is behind j, it should be visible, eg it should match the unmasked value
+                # if k is ahead of j, it should be masked out
+                if (j >= k) or (not use_mask):
+                    assert masked_scores[i, j, k] == scores[i, j, k], f"Value mismatch:\
+                    masked[{i},{j},{k}] = {masked_scores[i, j, k]}, unmasked[{i},{j},{k}] = {scores[i, j, k]}"
+                else:
+                    assert masked_scores[i, j, k] == -float('inf'), f"Expected masked[{i},{j},{k}], got {masked_scores[i, j, k]}"
+
 def test_attention_scores(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim)
     Q = single_attention.W_Q(X)

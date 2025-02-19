@@ -1,6 +1,7 @@
 import os
 import csv
 import random
+import torch
 import nltk
 #nltk.data.path.append(os.path.dirname(__file__))
 nltk.data.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -18,19 +19,19 @@ def process_csv(filepath, dType=None):
         output[tuple(row[:-1])] = dType(row[-1])
   return output    
 
-def get_lookups():
+def get_vocab():
   # These abbreviations are confusing and retarded (Well too bad)
   # tfx >> token from index ; xft >> index from token
   tfx = process_csv('text/b0_vocab.txt')
   tfx = {a[0]:b for a, b in tfx.items()} # TODO: This might be unnecessary; is a one element tuple real
-  xft = {b:a for a, b in tfx.items()}
+  xft = {b:int(a) for a, b in tfx.items()}
   #print(f"tfx dtype: {type(next(iter(tfx.values())))}")
   #print(f"xft dtype: {type(next(iter(xft.values())))}")
   return xft, tfx
 
 # Sample batch of data for testing purposes
-def sample(batch_size, seq_length):
-  xft, tfx = get_lookups()
+def sample(batch_size, seq_len):
+  xft, tfx = get_vocab()
   train_set = get_train_set()
 
   # Flatten the dataset for easier sequential sampling
@@ -44,13 +45,13 @@ def sample(batch_size, seq_length):
   targets = []
 
   for _ in range(batch_size):
-      start_idx = random.randint(0, len(token_ids) - seq_length - 1)
-      input_seq = token_ids[start_idx : start_idx + seq_length]
-      target_seq = token_ids[start_idx + 1 : start_idx + seq_length + 1]
+      start_idx = random.randint(0, len(token_ids) - seq_len - 1)
+      input_seq = token_ids[start_idx : start_idx + seq_len]
+      target_seq = token_ids[start_idx + 1 : start_idx + seq_len + 1]
       inputs.append(input_seq)
       targets.append(target_seq)
 
-  return inputs, targets
+  return torch.tensor(inputs, dtype=torch.long), torch.tensor(targets, dtype=torch.long)
     
   
 

@@ -2,11 +2,29 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+import data
+
+class EmbeddingLayer(nn.Module):
+	def __init__(self, d, vocab_size, seq_len):
+		super().__init__()
+		self.E = nn.Embedding(vocab_size, d) # Embedding table E
+		self.P = nn.Embedding(seq_len, d) # Positional Embedding table P
+
+	def forward(self, tokens):
+		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
+		# tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
+
+		batch_size, seq_len = tokens.shape
+		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
+		
+		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
+		return X # X.shape = (batch_size, seq_len, d)
+	
 class SHA(nn.Module): # Single Head Attention
 	# d_k and d_v also known as head dimension, d_h, in MHA context
-	def __init__(self, d, d_k, d_v, use_mask = True):
+	def __init__(self, d, d_k, d_v, masked = True):
 		super().__init__()
-		self.use_mask = use_mask
+		self.masked = masked
 		self.W_Q = nn.Linear(d, d_k)
 		self.W_K = nn.Linear(d, d_k)
 		self.W_V = nn.Linear(d, d_v)
@@ -38,22 +56,22 @@ class SHA(nn.Module): # Single Head Attention
 		return output
 	
 	def mask (self, input):
-		if not self.use_mask: return input
+		if not self.masked: return input
 
 		batch_size, rows, cols = input.shape
 		assert rows == cols, f"Matrix is not square: {rows}x{cols}"
 		# TODO: Double check if this is flipped the right way
 		tril = torch.tril(torch.ones(rows, rows, dtype=torch.bool))
 		# print(tril)
-		mask = tril.unsqueeze(0).expand(batch_size, -1, -1)
+		mask = tril.repeat(batch_size, 1, 1)
 		return input.masked_fill(~mask, float('-inf'))
 
 class MHA(nn.Module): # Multi-Headed Attention
-	def __init__(self, d, total_heads, use_mask = True):
+	def __init__(self, d, total_heads, masked = True):
 		super().__init__()
 		assert d % total_heads == 0, "d must be divisible by total number of heads"
 		self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
-		self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, use_mask) for _ in range(total_heads)])
+		self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, masked) for _ in range(total_heads)])
 		self.W_0 = nn.Linear(d, d)
 		print('mha init')
 	def forward(self, X):
@@ -62,7 +80,7 @@ class MHA(nn.Module): # Multi-Headed Attention
 		print('mha forward')
 		return output
 
-class FFN(nn.Module):
+class FFN(nn.Module): # Feed Forward Network
 	def __init__(self, d, d_hidden = None):
 		super().__init__()
 		# d_hidden is the number of nodes / dimensions on the hidden layer
@@ -101,14 +119,14 @@ class LayerNorm(nn.Module):
 		X = self.gain * ((X - means) / (sdevs + 1e-5)) + self.offset
 		print('layernorm forward')
 		return X
-
+	
 class TransformerBlock (nn.Module):
-	def __init__(self, d, total_heads):
+	def __init__(self, d, total_heads, masked = True):
 		super().__init__()
 		self.norm1 = LayerNorm(d)
 		self.norm2 = LayerNorm(d)
 		self.ffn = FFN(d)
-		self.mha = MHA(d, total_heads)
+		self.mha = MHA(d, total_heads, masked)
 		print('transformer init')
 	def forward(self, X):
 		print(X)
@@ -126,45 +144,36 @@ class TransformerBlock (nn.Module):
 		print('transformer forward')
 		return X
 
-class EmbeddingLayer(nn.Module):
-	def __init__(self, d, vocab_size, seq_len):
-		super().__init__()
-		self.E = nn.Embedding(vocab_size, d) # Embedding table E
-		self.P = nn.Embedding(seq_len, d) # Positional Embedding table P
-
-	def forward(self, tokens):
-		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
-		# tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
-
-		batch_size, seq_len = tokens.shape
-		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
-		
-		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
-		return X # X.shape = (batch_size, seq_len, d)
-	
 class LanguageModelHead(nn.Module):
-	def __init__(self):
+	def __init__(self, E):
 		super().__init__()
-		# converts everything back
+		# for the unembedding matrix you can use the embedding matrix transposed
+		# converts a d-length everything back
 		# pg. 16-18
-		# unembedding layer
-		# softmax
+		self.register_buffer("E_t", E.weight.T)
 		print('lm head init')
 	def forward(self, X):
+		# X shape = (batch_size, seq_len, d)
+		logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
+		
+		# get shape (batch_size, seq_len, vocab_size) list of probabilities for each batch
+		# dim=-1 >> softmax along vocab indices
+		probabilities = F.softmax(logits, dim=-1)
+		print('probabilities')
 		print('lm head forward')
-		return X
+		return probabilities
 
 class LanguageModel(nn.Module):
-	def __init__(self):
+	def __init__(self, d, vocab_size, seq_len, num_layers, total_heads):
 		super().__init__()
-		
-		print('todo')
-		# embedding layer
-		# blocks - set of TransformerBlock instances
-		# Language model head
-	def forward(self):
-		print('todo')
+		self.embedding_layer = EmbeddingLayer(d, vocab_size, seq_len)
+		self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
+		self.lm_head = LanguageModelHead(self.embedding_layer.E)
+	def forward(self, tokens):
+		X = self.embedding_layer(tokens)
+		for layer in self.transformer_layers:
+			X = layer(X)
+		output = self.lm_head(X)
+		return output
 
-#block_size = 8
-#vocab_size = 100
-#d = 32 # embedding dimensions
+
