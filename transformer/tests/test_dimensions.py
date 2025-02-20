@@ -1,6 +1,6 @@
 import torch
 import pytest
-from main import SHA, MHA, FFN, LayerNorm, TransformerBlock, LanguageModelHead, LanguageModel
+from modules import SHA, MHA, FFN, LayerNorm, TransformerBlock, LanguageModelHead, LanguageModel
 import data
 
 masked = True

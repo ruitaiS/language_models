@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from main import EmbeddingLayer, LayerNorm
+from modules import EmbeddingLayer, LayerNorm
 
 import random
 

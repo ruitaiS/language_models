@@ -121,6 +121,7 @@ class LayerNorm(nn.Module):
 		return X
 	
 class TransformerBlock (nn.Module):
+	# TODO: dropout
 	def __init__(self, d, total_heads, masked = True):
 		super().__init__()
 		self.norm1 = LayerNorm(d)
@@ -148,7 +149,8 @@ class LanguageModelHead(nn.Module):
 	def __init__(self, E):
 		super().__init__()
 		# for the unembedding matrix you can use the embedding matrix transposed
-		# converts a d-length everything back
+		# converts a d-length embedding back into a vocab_size length raw scores vector
+		# softmax along the vector for a probability distribution
 		# pg. 16-18
 		self.register_buffer("E_t", E.weight.T)
 		print('lm head init')
@@ -159,9 +161,9 @@ class LanguageModelHead(nn.Module):
 		# get shape (batch_size, seq_len, vocab_size) list of probabilities for each batch
 		# dim=-1 >> softmax along vocab indices
 		probabilities = F.softmax(logits, dim=-1)
-		print('probabilities')
+		print(f'probabilities: {probabilities}')
 		print('lm head forward')
-		return probabilities
+		return probabilities, logits
 
 class LanguageModel(nn.Module):
 	def __init__(self, d, vocab_size, seq_len, num_layers, total_heads):
@@ -173,7 +175,10 @@ class LanguageModel(nn.Module):
 		X = self.embedding_layer(tokens)
 		for layer in self.transformer_layers:
 			X = layer(X)
-		output = self.lm_head(X)
-		return output
+		probabilities, logits = self.lm_head(X)
+		return probabilities
 
 
+def loss_func(input, target):
+	# TODO
+	return nn.CrossEntropyLoss(input, target)

@@ -1,8 +1,8 @@
 import torch
 import pytest
-from main import SHA
+from modules import SHA
 
-use_mask = True
+masked = True
 batch_size = 2
 seq_len = 4
 embed_dim = 8 # d
@@ -29,7 +29,7 @@ head_dim = 4  # (aka d_k aka d_v)
 
 @pytest.fixture
 def single_attention(): 
-    return SHA(d = embed_dim, d_k = head_dim, d_v = head_dim, use_mask=use_mask)
+    return SHA(d = embed_dim, d_k = head_dim, d_v = head_dim, masked=masked)
 
 def test_final_output(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim)
@@ -38,7 +38,7 @@ def test_final_output(single_attention):
     V = single_attention.W_V(X)
 
     scores = single_attention.scaled_dot_prod(Q, K)
-    if use_mask: scores = single_attention.mask(scores)
+    if masked: scores = single_attention.mask(scores)
     weights = torch.softmax(scores, dim=-1)
 
     output = single_attention(X)
@@ -74,7 +74,7 @@ def test_masking(single_attention):
                 # Think of j as the current token, and k as the one you're looking at
                 # If k is behind j, it should be visible, eg it should match the unmasked value
                 # if k is ahead of j, it should be masked out
-                if (j >= k) or (not use_mask):
+                if (j >= k) or (not masked):
                     assert masked_scores[i, j, k] == scores[i, j, k], f"Value mismatch:\
                     masked[{i},{j},{k}] = {masked_scores[i, j, k]}, unmasked[{i},{j},{k}] = {scores[i, j, k]}"
                 else:
@@ -90,7 +90,7 @@ def test_attention_scores(single_attention):
     torch.testing.assert_close(scores, Q @ K.transpose(-2, -1) / (head_dim ** 0.5))
 
     # Check masking is working
-    if use_mask:
+    if masked:
         scores = single_attention.mask(scores)
         # TODO: Test Mask Values
 
@@ -105,7 +105,7 @@ def test_weighted_sums(single_attention):
     V = single_attention.W_V(X)
 
     scores = single_attention.scaled_dot_prod(Q, K)
-    if use_mask: scores = single_attention.mask(scores)
+    if masked: scores = single_attention.mask(scores)
 
     weights = torch.softmax(scores, dim=-1)
 

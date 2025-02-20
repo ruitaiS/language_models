@@ -45,7 +45,7 @@ def sample(batch_size, seq_len):
   targets = []
 
   for _ in range(batch_size):
-      start_idx = random.randint(0, len(token_ids) - seq_len - 1)
+      start_idx = random.randint(0, len(token_ids) - seq_len - 2)
       input_seq = token_ids[start_idx : start_idx + seq_len]
       target_seq = token_ids[start_idx + 1 : start_idx + seq_len + 1]
       inputs.append(input_seq)
