@@ -48,32 +48,26 @@ def language_model():
 
 def test_multi_attention_output_shape(multi_attention):
     output = multi_attention(X)
-    # Check output is correct shape
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
-
 def test_ffn_output_shape(ffn):
     output = ffn(X)
-    # Check output is correct shape
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
 def test_layernorm_output_shape(layernorm):
     output = layernorm(X)
-    # Check output is correct shape
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
 def test_block_output_shape(transformerblock):
     output = transformerblock(X)
-    # Check output is correct shape
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
 def test_lm_output_shape(language_model):
-    output = language_model(input_tokens)
-    # Check output is correct shape
-    expected_shape = (batch_size, seq_len, vocab_size)
+    logits, _ = language_model(input_tokens)
+    logits_expected_shape = (batch_size, seq_len, vocab_size)
     
-    assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
+    assert logits.shape == logits_expected_shape, f"Expected {logits_expected_shape}, got {logits.shape}"

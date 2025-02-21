@@ -29,7 +29,42 @@ def get_vocab():
   #print(f"xft dtype: {type(next(iter(xft.values())))}")
   return xft, tfx
 
-# Sample batch of data for testing purposes
+def get_training_sequences(batch_size, seq_len, shuffle= True):
+  xft, _ = get_vocab()
+  train_set = get_train_set()
+  all_tokens = [token for sentence in train_set for token in sentence]
+  token_ids = [xft.get(token, xft["<?>"]) for token in all_tokens]
+  
+  num_samples = len(token_ids) - seq_len - 1
+
+  inputs = torch.empty((num_samples, seq_len), dtype=torch.long)
+  targets = torch.empty((num_samples, seq_len), dtype=torch.long)
+  for start_idx in range(num_samples):
+    inputs[start_idx] = torch.tensor(token_ids[start_idx : start_idx + seq_len], dtype=torch.long)
+    targets[start_idx] = torch.tensor(token_ids[start_idx + 1 : start_idx + seq_len + 1], dtype=torch.long)
+
+  if shuffle:
+    reorder = torch.randperm(len(inputs))
+    inputs = inputs[reorder]
+    targets = targets[reorder]
+
+  remainder = num_samples % batch_size
+  if remainder:
+    inputs = inputs[:-remainder]
+    targets = targets[:-remainder]
+  
+  input_batches = inputs.view(-1, batch_size, seq_len)
+  target_batches = targets.view(-1, batch_size, seq_len)
+
+  print(f"Input Batches: {input_batches.shape}")
+  print(input_batches)
+  print(f"Target Batches: {target_batches.shape}")
+  print(target_batches)
+
+  return input_batches, target_batches
+
+
+# Sample batch of data for testing purposes only
 def sample(batch_size, seq_len):
   xft, tfx = get_vocab()
   train_set = get_train_set()
@@ -52,6 +87,7 @@ def sample(batch_size, seq_len):
       targets.append(target_seq)
 
   return torch.tensor(inputs, dtype=torch.long), torch.tensor(targets, dtype=torch.long)
+    
     
   
 

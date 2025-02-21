@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-
-import data
+import numpy as np
 
 class EmbeddingLayer(nn.Module):
 	def __init__(self, d, vocab_size, seq_len):
 		super().__init__()
 		self.E = nn.Embedding(vocab_size, d) # Embedding table E
 		self.P = nn.Embedding(seq_len, d) # Positional Embedding table P
+		print('embedding layer init')
 
 	def forward(self, tokens):
 		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
@@ -18,6 +18,7 @@ class EmbeddingLayer(nn.Module):
 		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
 		
 		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
+		print(f"embedding_layer(tokens): {X}")
 		return X # X.shape = (batch_size, seq_len, d)
 	
 class SHA(nn.Module): # Single Head Attention
@@ -41,7 +42,7 @@ class SHA(nn.Module): # Single Head Attention
 		print('sha forward')
 		
 		# MHA class contains its own W_0 which aggregates across the attention heads
-		# Uncomment if doing explicitly single headed attention
+		# Uncomment below if doing explicitly single headed attention
 		#output = self.W_0(product) # (batch_size, seq_length, d)
 		#output
 
@@ -77,7 +78,7 @@ class MHA(nn.Module): # Multi-Headed Attention
 	def forward(self, X):
 		output = torch.cat([head(X) for head in self.heads], dim=-1)
 		output = self.W_0(output)
-		print('mha forward')
+		print(f'mha(X): {output}')
 		return output
 
 class FFN(nn.Module): # Feed Forward Network
@@ -100,9 +101,9 @@ class FFN(nn.Module): # Feed Forward Network
 
 	def forward(self, X):
 		# ReLu(xW1+b1)W2 + b2
-		hidden = torch.relu(torch.matmul(X, self.W1) + self.b1)
-		output = torch.matmul(hidden, self.W2) + self.b2
-		print('ffn forward')
+		hidden = torch.relu(torch.matmul(X, self.W1) + self.b1) # ReLu(xW1 + b1)
+		output = torch.matmul(hidden, self.W2) + self.b2 # hidden * W2 + b2
+		print(f'ffn(X): {output}')
 		return output
 
 class LayerNorm(nn.Module):
@@ -117,7 +118,7 @@ class LayerNorm(nn.Module):
 		means = X.mean(dim=-1, keepdim=True) # dim=-1 is d dimension
 		sdevs = X.std(dim=-1, unbiased=False, keepdim=True)
 		X = self.gain * ((X - means) / (sdevs + 1e-5)) + self.offset
-		print('layernorm forward')
+		print(f'layernorm(X): {X}')
 		return X
 	
 class TransformerBlock (nn.Module):
@@ -130,8 +131,6 @@ class TransformerBlock (nn.Module):
 		self.mha = MHA(d, total_heads, masked)
 		print('transformer init')
 	def forward(self, X):
-		print(X)
-
 		# pg. 10
 		# with input x:
 		residual = X
@@ -142,7 +141,7 @@ class TransformerBlock (nn.Module):
 		X = self.norm2(X)
 		X = self.ffn(X)
 		X += residual
-		print('transformer forward')
+		print(f"transformer(X) : {X}")
 		return X
 
 class LanguageModelHead(nn.Module):
@@ -152,33 +151,55 @@ class LanguageModelHead(nn.Module):
 		# converts a d-length embedding back into a vocab_size length raw scores vector
 		# softmax along the vector for a probability distribution
 		# pg. 16-18
+
+		# NOTE: Wonder what happens if you initialize it at E_t
+		# but then trained it seperately
 		self.register_buffer("E_t", E.weight.T)
 		print('lm head init')
 	def forward(self, X):
 		# X shape = (batch_size, seq_len, d)
 		logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
 		
-		# get shape (batch_size, seq_len, vocab_size) list of probabilities for each batch
-		# dim=-1 >> softmax along vocab indices
-		probabilities = F.softmax(logits, dim=-1)
-		print(f'probabilities: {probabilities}')
+		# get shape (batch_size, seq_len, vocab_size) list of raw scores (logits) for each batch
+		
+		print(f'lmh logits: {logits}')
 		print('lm head forward')
-		return probabilities, logits
+		return logits # shape (batch_size, seq_len, vocab_size)
 
 class LanguageModel(nn.Module):
 	def __init__(self, d, vocab_size, seq_len, num_layers, total_heads):
 		super().__init__()
+		# self.text_corpus >> vocab_size, xft/tfx (TODO)
+		self.seq_len = seq_len
 		self.embedding_layer = EmbeddingLayer(d, vocab_size, seq_len)
 		self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
 		self.lm_head = LanguageModelHead(self.embedding_layer.E)
-	def forward(self, tokens):
-		X = self.embedding_layer(tokens)
+		self.loss_func = nn.CrossEntropyLoss(reduction="mean")
+
+	def forward(self, token_sequence, targets = None):
+		X = self.embedding_layer(token_sequence)
 		for layer in self.transformer_layers:
 			X = layer(X)
-		probabilities, logits = self.lm_head(X)
-		return probabilities
-
-
-def loss_func(input, target):
-	# TODO
-	return nn.CrossEntropyLoss(input, target)
+		logits = self.lm_head(X)
+		if targets is not None:
+			# TODO: Explain better
+			# logits shape (batch_size, seq_len, vocab_size)
+			# targets shape (batch_size, seq_len)
+			# Every token in the sequence is converted to a vocab length logits vector
+			# containing raw prediction scores for the next word, indexes corresponding to token indexes
+			# the token index of the actual next word is in targets
+			loss = self.loss_func(logits, targets)
+		else:
+			loss = None
+		return logits, loss
+	
+	def sample(probabilities, method='greedy'):
+		# TODO See ch 10; top-k should be easy
+		return torch.argmax(probabilities, dim =-1)
+	
+	def generate(self, tokens):
+		logits, _ = self.forward([tokens[:self.seq_len]]) # (batch_size, seq_len), with batch_size = 1
+		# dim=-1 >> softmax along vocab indices to get probabilities
+		probabilities = F.softmax(logits, dim=-1)
+		print(f'lm probabilities: {probabilities}')
+		return self.sample(probabilities)
