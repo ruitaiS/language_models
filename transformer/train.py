@@ -24,9 +24,18 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 
 print(f"Optimizer: {optimizer}")
 
+'''
 X = input_batches[1]
 Y = target_batches[1]
-logits, loss = model(X, targets=Y)
+
 print(f"Loss: {loss}")
 '''
-'''
+batch_index = 0
+total_batches = len(input_batches)
+for X, Y in zip(input_batches, target_batches):
+	logits, loss = model(X, targets=Y)
+	print(f"Batch {batch_index} of {total_batches}. Loss: {loss}")
+	loss.backward()
+	optimizer.step()
+	batch_index += 1
+
