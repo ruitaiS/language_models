@@ -4,20 +4,21 @@ from torch.nn import functional as F
 import numpy as np
 
 class EmbeddingLayer(nn.Module):
-	def __init__(self, d, vocab_size, seq_len):
+	def __init__(self, d, vocab_size, context_len):
 		super().__init__()
 		self.E = nn.Embedding(vocab_size, d) # Embedding table E
-		self.P = nn.Embedding(seq_len, d) # Positional Embedding table P
+		self.P = nn.Embedding(context_len, d) # Positional Embedding table P
 		#print('embedding layer init')
 
-	def forward(self, tokens):
-		# accepts one batch of token_ids; tokens.shape >> (batch_size, seq_len)
+	def forward(self, token_batch):
+		# Accepts one batch of tokens, shape (batch_size, seq_len)
+		# seq_len <= context_len
 		# tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
 
-		batch_size, seq_len = tokens.shape
+		batch_size, seq_len = token_batch.shape
 		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
 		
-		X = self.E(tokens) + self.P(positions) # Composite Embeddings (Word + position)
+		X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
 		#print(f"embedding_layer(tokens): {X}")
 		return X # X.shape = (batch_size, seq_len, d)
 	
@@ -167,17 +168,22 @@ class LanguageModelHead(nn.Module):
 		return logits # shape (batch_size, seq_len, vocab_size)
 
 class LanguageModel(nn.Module):
-	def __init__(self, d, vocab_size, seq_len, num_layers, total_heads):
+	def __init__(self, d, vocab, context_len, num_layers, total_heads):
 		super().__init__()
-		# self.text_corpus >> vocab_size, xft/tfx (TODO)
-		self.seq_len = seq_len
-		self.embedding_layer = EmbeddingLayer(d, vocab_size, seq_len)
+		self.xft, self. tfx = vocab
+		self.vocab_size = len(self.xft)
+		self.context_len = context_len
+		self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len)
 		self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
 		self.lm_head = LanguageModelHead(self.embedding_layer.E)
 		self.loss_func = nn.CrossEntropyLoss(reduction="mean")
 
-	def forward(self, token_sequence, targets = None):
-		X = self.embedding_layer(token_sequence)
+	def forward(self, token_batch, targets = None):
+		# Accepts one batch of tokens of shape (batch_size, seq_len)
+		# longer sequences truncated to context length
+		# shorter sequences preserved 
+		token_batch = token_batch[:, -self.context_len:]
+		X = self.embedding_layer(token_batch)
 		for layer in self.transformer_layers:
 			X = layer(X)
 		logits = self.lm_head(X)
@@ -207,13 +213,24 @@ class LanguageModel(nn.Module):
 		flattened_targets = targets.view(-1)
 		return self.loss_func(flattened_logits, flattened_targets)
 	
-	def sample(probabilities, method='greedy'):
-		# TODO See ch 10; top-k should be easy
-		return torch.argmax(probabilities, dim =-1)
-	
-	def generate(self, tokens):
-		logits, _ = self.forward([tokens[:self.seq_len]]) # (batch_size, seq_len), with batch_size = 1
-		# dim=-1 >> softmax along vocab indices to get probabilities
-		probabilities = F.softmax(logits, dim=-1)
-		#print(f'lm probabilities: {probabilities}')
-		return self.sample(probabilities)
+	def generate(self, max_tokens):
+		def sample(probabilities, method='greedy'):
+			# TODO See ch 10; top-k should be easy
+			return torch.argmax(probabilities, dim =-1)
+		def next_token(token_batch):
+			print(f"Predicting on: {token_batch}")		
+			logits, _ = self.forward(token_batch)
+			# dim=-1 >> softmax along vocab indices to get probabilities
+			probabilities = F.softmax(logits, dim=-1)
+			#print(f'lm probabilities: {probabilities}')
+			return sample(probabilities)
+
+		# (batch_size, seq_len), with batch_size = 1, seq_len = 1
+		# TODO: Everything needs to be a batch rn or things break / need rewriting
+		# Decide if it's worth rewriting or just letting it be janky
+		current_tokens = torch.tensor([[self.xft['<s>']]])
+		token_count = 0
+		while token_count <= max_tokens:
+			current_tokens = torch.cat((current_tokens, next_token(current_tokens)), dim=1)
+			token_count += 1
+		print(current_tokens)

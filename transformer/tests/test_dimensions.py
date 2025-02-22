@@ -44,7 +44,7 @@ def lm_head(language_model):
 
 @pytest.fixture
 def language_model(): 
-    return LanguageModel(embed_dim, vocab_size, seq_len, num_layers, total_heads)
+    return LanguageModel(embed_dim, data.get_vocab(), seq_len, num_layers, total_heads)
 
 def test_multi_attention_output_shape(multi_attention):
     output = multi_attention(X)
