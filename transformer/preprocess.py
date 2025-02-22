@@ -60,7 +60,7 @@ unigram_counts['<?>'] = 0
 
 
 # Assign index mapping and create vocab hash
-xft = {token: index + 1 for index, token in enumerate(sorted(unigram_counts.keys()))} # xft eg. index from token
+xft = {token: index for index, token in enumerate(sorted(unigram_counts.keys()))} # xft eg. index from token
 vocab = {b:a for a,b in xft.items()} # tfx token from index
 
 print(f"{len(vocab)} words in training set vocab")
