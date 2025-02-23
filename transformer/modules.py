@@ -216,10 +216,13 @@ class LanguageModel(nn.Module):
 	def generate(self, max_tokens):
 		def sample(probabilities, method='greedy'):
 			# TODO See ch 10; top-k should be easy
-			return torch.argmax(probabilities, dim =-1)
-		def next_token(token_batch):
-			print(f"Predicting on: {token_batch}")		
+			return torch.distributions.Categorical(probs=probabilities).sample()
+
+			#return torch.argmax(probabilities, dim =-1)
+		def next_token(token_batch):	
 			logits, _ = self.forward(token_batch)
+			logits = logits[:, -1:, :] # Only want last token, not whole sequence
+			#print(f"Logits shape: {logits.shape}")
 			# dim=-1 >> softmax along vocab indices to get probabilities
 			probabilities = F.softmax(logits, dim=-1)
 			#print(f'lm probabilities: {probabilities}')
@@ -228,9 +231,15 @@ class LanguageModel(nn.Module):
 		# (batch_size, seq_len), with batch_size = 1, seq_len = 1
 		# TODO: Everything needs to be a batch rn or things break / need rewriting
 		# Decide if it's worth rewriting or just letting it be janky
-		current_tokens = torch.tensor([[self.xft['<s>']]])
+		curr = torch.tensor([[self.xft['<s>']]])
 		token_count = 0
 		while token_count <= max_tokens:
-			current_tokens = torch.cat((current_tokens, next_token(current_tokens)), dim=1)
+			next = next_token(curr)
+			#print(f"Next: {next}")
+			curr = torch.cat((curr, next), dim=1)
+			if next == self.xft['</s>']:
+				break;
 			token_count += 1
-		print(current_tokens)
+		print(curr)
+		output = [self.tfx[token.item()] for token in curr.squeeze(0)]
+		return output

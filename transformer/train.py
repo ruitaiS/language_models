@@ -1,20 +1,18 @@
+import time
+import csv
 import data
 from modules import LanguageModel
 
 import torch
 from torch.optim import AdamW
+from torch.nn.utils import clip_grad_norm_
 
 masked = True
 batch_size = 2
 seq_len = 4
 input_batches, target_batches = data.get_training_sequences(batch_size, seq_len)
 
-'''
-'''
-xft, tfx = data.get_vocab()
-
 d = 8
-vocab_size = len(xft)
 num_layers = 6
 total_heads = 2
 #head_dim = embed_dim / total_heads
@@ -27,19 +25,31 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 
 print(f"Optimizer: {optimizer}")
 
-batch_index = 0
 total_batches = len(input_batches)
-filename = 'model1'
+filename = 'model2'
+print_interval = 500
 
 try:
-	for X, Y in zip(input_batches, target_batches):
-		logits, loss = model(X, targets=Y)
-		print(f"Batch {batch_index} of {total_batches}. Loss: {loss}")
-		loss.backward()
-		optimizer.step()
-		batch_index += 1
+
+	with open(f'models/{filename}_tr.txt', 'w') as f:
+		writer = csv.writer(f, delimiter=' ')
+
+		start = time.time()
+		for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
+			logits, loss = model(X, targets=Y)
+			optimizer.zero_grad()
+			loss.backward()
+			clip_grad_norm_(model.parameters(), max_norm=1.0)
+			optimizer.step()
+
+			elapsed = time.time() - start
+			writer.writerow([batch_index, loss.item(), elapsed])
+			if batch_index % print_interval == 1:
+				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. ETR: {((elapsed / batch_index)*(total_batches - batch_index)):.2f}")
 except KeyboardInterrupt:
+	f.close()
 	torch.save(model.state_dict(), f"models/{filename}.pth")
+f.close()
 torch.save(model.state_dict(), f"models/{filename}.pth")
 
 

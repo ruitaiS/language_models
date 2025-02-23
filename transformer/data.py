@@ -23,7 +23,7 @@ def get_vocab():
   # These abbreviations are confusing and retarded (Well too bad)
   # tfx >> token from index ; xft >> index from token
   tfx = process_csv('text/b0_vocab.txt')
-  tfx = {a[0]:b for a, b in tfx.items()} # TODO: This might be unnecessary; is a one element tuple real
+  tfx = {int(a[0]):b for a, b in tfx.items()} # TODO: This might be unnecessary; is a one element tuple real
   xft = {b:int(a) for a, b in tfx.items()}
   #print(f"tfx dtype: {type(next(iter(tfx.values())))}")
   #print(f"xft dtype: {type(next(iter(xft.values())))}")
@@ -33,6 +33,7 @@ def get_training_sequences(batch_size, seq_len, shuffle= True):
   xft, _ = get_vocab()
   train_set = get_train_set()
   all_tokens = [token for sentence in train_set for token in sentence]
+  print(all_tokens[:50])
   token_ids = [xft.get(token, xft["<?>"]) for token in all_tokens]
   
   num_samples = len(token_ids) - seq_len - 1
