@@ -17,10 +17,13 @@ class EmbeddingLayer(nn.Module):
 
 		batch_size, seq_len = token_batch.shape
 		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
+		padding_mask = (token_batch != 8) # keep Trues, mask Falses
 		
 		X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
 		#print(f"embedding_layer(tokens): {X}")
-		return X # X.shape = (batch_size, seq_len, d)
+
+		# X.shape = (batch_size, seq_len, d) ; padding_mask.shape = (batch_size, seq_len)
+		return X, padding_mask 
 	
 class SHA(nn.Module): # Single Head Attention
 	# d_k and d_v also known as head dimension, d_h, in MHA context
@@ -33,12 +36,13 @@ class SHA(nn.Module): # Single Head Attention
 		#self.W_0 = nn.Linear(d_v, d)
 		#print('sha init')
 
-	def forward(self, X):
-		Q = self.W_Q(X) # Queries Matrix
-		K = self.W_K(X) # Keys Matrix
-		V = self.W_V(X) # Values Matrix
+	def forward(self, X, padding_mask):
+		# X.shape = (batch_size, seq_len, d)
+		Q = self.W_Q(X) # Queries Matrix (batch_size, seq_len, d_k)
+		K = self.W_K(X) # Keys Matrix (batch_size, seq_len, d_k)
+		V = self.W_V(X) # Values Matrix (batch_size, seq_len, d_v)
 
-		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K)), dim=-1)
+		weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K), padding_mask), dim=-1)
 		product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
 		#print('sha forward')
 		
@@ -57,16 +61,24 @@ class SHA(nn.Module): # Single Head Attention
 		# Masking drops the scores for tokens that come after the current one
 		return output
 	
-	def mask (self, input):
+	# TODO: Double check if this is flipped the right way
+	def mask (self, input, padding_mask):
 		if not self.masked: return input
 
 		batch_size, rows, cols = input.shape
 		assert rows == cols, f"Matrix is not square: {rows}x{cols}"
-		# TODO: Double check if this is flipped the right way
-		tril = torch.tril(torch.ones(rows, rows, dtype=torch.bool))
-		# print(tril)
-		mask = tril.repeat(batch_size, 1, 1)
-		return input.masked_fill(~mask, float('-inf'))
+
+		expanded_padding_mask = padding_mask.unsqueeze(1) & padding_mask.unsqueeze(2)
+		autoregression_mask = torch.tril(torch.ones(rows, rows, dtype=torch.bool)).repeat(batch_size, 1, 1)
+
+		'''print(f"Padding Mask Shape: {padding_mask.shape}")
+		print(padding_mask)
+		print(f"Expanded Padding Mask Shape: {expanded_padding_mask.shape}")
+		print(expanded_padding_mask)		
+		print(f"Autoregression Mask Shape: {autoregression_mask.shape}")
+		print(autoregression_mask)'''
+		
+		return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self, d, total_heads, masked = True):
@@ -76,8 +88,8 @@ class MHA(nn.Module): # Multi-Headed Attention
 		self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, masked) for _ in range(total_heads)])
 		self.W_0 = nn.Linear(d, d)
 		#print('mha init')
-	def forward(self, X):
-		output = torch.cat([head(X) for head in self.heads], dim=-1)
+	def forward(self, X, padding_mask):
+		output = torch.cat([head(X, padding_mask) for head in self.heads], dim=-1)
 		output = self.W_0(output)
 		#print(f'mha(X): {output}')
 		return output
@@ -131,12 +143,12 @@ class TransformerBlock (nn.Module):
 		self.ffn = FFN(d)
 		self.mha = MHA(d, total_heads, masked)
 		#print('transformer init')
-	def forward(self, X):
+	def forward(self, X, padding_mask):
 		# pg. 10
 		# with input x:
 		residual = X
 		X = self.norm1(X)
-		X = self.mha(X)
+		X = self.mha(X, padding_mask)
 		X += residual
 		residual = X
 		X = self.norm2(X)
@@ -183,9 +195,9 @@ class LanguageModel(nn.Module):
 		# longer sequences truncated to context length
 		# shorter sequences preserved 
 		token_batch = token_batch[:, -self.context_len:]
-		X = self.embedding_layer(token_batch)
+		X, padding_mask = self.embedding_layer(token_batch)
 		for layer in self.transformer_layers:
-			X = layer(X)
+			X = layer(X, padding_mask)
 		logits = self.lm_head(X)
 		#print(f"Logits shape: {logits.shape}")
 		if targets is not None:
@@ -231,7 +243,8 @@ class LanguageModel(nn.Module):
 		# (batch_size, seq_len), with batch_size = 1, seq_len = 1
 		# TODO: Everything needs to be a batch rn or things break / need rewriting
 		# Decide if it's worth rewriting or just letting it be janky
-		curr = torch.tensor([[self.xft['<s>']]])
+		pad_len = self.context_len - 1
+		curr = torch.tensor([[self.xft["<>"]] * pad_len + [self.xft['<s>']]])
 		token_count = 0
 		while token_count <= max_tokens:
 			next = next_token(curr)

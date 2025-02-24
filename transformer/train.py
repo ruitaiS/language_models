@@ -9,7 +9,7 @@ from torch.nn.utils import clip_grad_norm_
 
 masked = True
 batch_size = 2
-seq_len = 4
+seq_len = 8
 input_batches, target_batches = data.get_training_sequences(batch_size, seq_len)
 
 d = 8
@@ -26,7 +26,7 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 print(f"Optimizer: {optimizer}")
 
 total_batches = len(input_batches)
-filename = 'model2'
+filename = 'model3'
 print_interval = 500
 
 try:
@@ -45,7 +45,7 @@ try:
 			elapsed = time.time() - start
 			writer.writerow([batch_index, loss.item(), elapsed])
 			if batch_index % print_interval == 1:
-				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. ETR: {((elapsed / batch_index)*(total_batches - batch_index)):.2f}")
+				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. ETR: {((elapsed / batch_index)*(total_batches - batch_index))/60:.2f} minutes")
 except KeyboardInterrupt:
 	f.close()
 	torch.save(model.state_dict(), f"models/{filename}.pth")

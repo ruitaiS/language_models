@@ -57,6 +57,7 @@ for line in train_set:
 unigram_counts['<s>'] = 0
 unigram_counts['</s>'] = 0
 unigram_counts['<?>'] = 0
+unigram_counts['<>'] = 0
 
 
 # Assign index mapping and create vocab hash

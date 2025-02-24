@@ -24,7 +24,7 @@ def test_output_shape(layer_norm, embedding_layer):
     seq_len = random.randint(1, block_size-1)
     print(f'batch_size: {batch_size}, seq_len: {seq_len}, embedding depth: {d}')
     tokens = torch.randint(0, vocab_size, (batch_size, seq_len))
-    embeddings = embedding_layer(tokens)
+    embeddings, _ = embedding_layer(tokens)
     output = layer_norm(embeddings)
 
     assert output.shape == (batch_size, seq_len, d), f"Expected ({batch_size}, {seq_len}, {d}), got {output.shape}"

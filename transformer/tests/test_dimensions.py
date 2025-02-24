@@ -20,6 +20,7 @@ print(f'Vocab Size: {vocab_size}')
 input_tokens, target_tokens = data.sample(batch_size, seq_len)
 
 X = torch.randn(batch_size, seq_len, embed_dim)
+padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
 #---------------------------
 
 @pytest.fixture
@@ -47,7 +48,7 @@ def language_model():
     return LanguageModel(embed_dim, data.get_vocab(), seq_len, num_layers, total_heads)
 
 def test_multi_attention_output_shape(multi_attention):
-    output = multi_attention(X)
+    output = multi_attention(X, padding_mask)
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
@@ -62,7 +63,7 @@ def test_layernorm_output_shape(layernorm):
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
 def test_block_output_shape(transformerblock):
-    output = transformerblock(X)
+    output = transformerblock(X, padding_mask)
     expected_shape = (batch_size, seq_len, embed_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 

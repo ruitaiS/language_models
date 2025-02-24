@@ -33,21 +33,27 @@ def single_attention():
 
 def test_final_output(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim)
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
     Q = single_attention.W_Q(X)
     K = single_attention.W_K(X)
     V = single_attention.W_V(X)
 
     scores = single_attention.scaled_dot_prod(Q, K)
-    if masked: scores = single_attention.mask(scores)
+    if masked:
+        scores = single_attention.mask(scores, padding_mask)
     weights = torch.softmax(scores, dim=-1)
 
-    output = single_attention(X)
+    output = single_attention(X, padding_mask)
 
     # Check output is correct shape
     expected_shape = (batch_size, seq_len, head_dim)
     assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
 
     # Check multiplication is correct
+    print(f"Output Shape: {output.shape}")
+    print(output)
+    print(f"Weights @ V Shape: {(weights @ V).shape}")
+    print(weights@ V)
     torch.testing.assert_close(output, weights @ V)
 
 def test_linear_transforms(single_attention):
@@ -66,7 +72,9 @@ def test_linear_transforms(single_attention):
 
 def test_masking(single_attention):
     scores = torch.randn(batch_size, seq_len, seq_len, dtype=torch.float32)
-    masked_scores = single_attention.mask(scores)
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
+    expanded_padding_mask = padding_mask.unsqueeze(1) & padding_mask.unsqueeze(2)
+    masked_scores = single_attention.mask(scores, padding_mask)
 
     for i in range(batch_size): # i indexes sequences in the batch
         for j in range(seq_len): # j is the index for the attention vector for the jth token in the sequence
@@ -74,14 +82,15 @@ def test_masking(single_attention):
                 # Think of j as the current token, and k as the one you're looking at
                 # If k is behind j, it should be visible, eg it should match the unmasked value
                 # if k is ahead of j, it should be masked out
-                if (j >= k) or (not masked):
+                if (not masked) or ((j >= k) and expanded_padding_mask[i, j, k] and expanded_padding_mask[i, k, j]):
                     assert masked_scores[i, j, k] == scores[i, j, k], f"Value mismatch:\
                     masked[{i},{j},{k}] = {masked_scores[i, j, k]}, unmasked[{i},{j},{k}] = {scores[i, j, k]}"
                 else:
-                    assert masked_scores[i, j, k] == -float('inf'), f"Expected masked[{i},{j},{k}], got {masked_scores[i, j, k]}"
+                    assert masked_scores[i, j, k] == float('-1e9'), f"Expected masked[{i},{j},{k}], got {masked_scores[i, j, k]}"
 
 def test_attention_scores(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim)
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
     Q = single_attention.W_Q(X)
     K = single_attention.W_K(X)
     
@@ -89,10 +98,8 @@ def test_attention_scores(single_attention):
     scores = single_attention.scaled_dot_prod(Q, K)
     torch.testing.assert_close(scores, Q @ K.transpose(-2, -1) / (head_dim ** 0.5))
 
-    # Check masking is working
     if masked:
-        scores = single_attention.mask(scores)
-        # TODO: Test Mask Values
+        scores = single_attention.mask(scores, padding_mask)
 
     # Check output is correct shape
     assert scores.shape == (batch_size, seq_len, seq_len), \
@@ -100,12 +107,13 @@ def test_attention_scores(single_attention):
 
 def test_weighted_sums(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim)
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
     Q = single_attention.W_Q(X)
     K = single_attention.W_K(X)
     V = single_attention.W_V(X)
 
     scores = single_attention.scaled_dot_prod(Q, K)
-    if masked: scores = single_attention.mask(scores)
+    if masked: scores = single_attention.mask(scores, padding_mask)
 
     weights = torch.softmax(scores, dim=-1)
 
@@ -114,7 +122,8 @@ def test_weighted_sums(single_attention):
 
 def test_gradient_flow(single_attention):
     X = torch.randn(batch_size, seq_len, embed_dim, requires_grad=True)
-    output = single_attention(X).sum()
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
+    output = single_attention(X, padding_mask).sum()
     output.backward()  # Compute gradients
 
     # Check there are parameters
@@ -133,7 +142,8 @@ def test_reproducibility():
     model2 = SHA(embed_dim, head_dim, head_dim)
 
     x = torch.randn(batch_size, seq_len, embed_dim)
-    output1 = model1(x)
-    output2 = model2(x)
+    padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
+    output1 = model1(x, padding_mask)
+    output2 = model2(x, padding_mask)
 
     torch.testing.assert_close(output1, output2, atol=1e-6, rtol=1e-6)
