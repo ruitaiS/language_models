@@ -78,7 +78,8 @@ class SHA(nn.Module): # Single Head Attention
 		print(f"Autoregression Mask Shape: {autoregression_mask.shape}")
 		print(autoregression_mask)'''
 		
-		return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
+		#return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
+		return input.masked_fill(~autoregression_mask, float('-1e9'))
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self, d, total_heads, masked = True):

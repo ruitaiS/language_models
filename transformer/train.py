@@ -20,8 +20,8 @@ model = LanguageModel(d, data.get_vocab(), seq_len, num_layers, total_heads)
 model.train()
 
 print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
-#for p in model.parameters():
-#  p.requires_grad = True
+for p in model.parameters():
+  p.requires_grad = True
 
 #print(f"Parameters: {model.parameters()}")
 
@@ -30,7 +30,7 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 print(f"Optimizer: {optimizer}")
 
 total_batches = len(input_batches)
-filename = 'model3'
+filename = f'model-{int(time.time())}'
 print_interval = 500
 
 try:

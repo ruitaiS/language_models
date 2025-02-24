@@ -51,8 +51,12 @@ def get_training_sequences(batch_size, context_len, shuffle=True):
   for sentence in train_set:
     sequence = [xft['<>']] * context_len
     for token_id in sentence:
+      
       inputs[insert_idx] = sequence.copy()
-      targets[insert_idx] = sequence[1:] + [token_id]
+      next_sequence = sequence[1:] + [token_id]
+      targets[insert_idx] = next_sequence
+      print(targets[insert_idx])
+      sequence = next_sequence
       insert_idx += 1
 
   # num_samples, context_len
