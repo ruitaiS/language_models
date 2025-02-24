@@ -130,7 +130,7 @@ class LayerNorm(nn.Module):
 		# Normalize each d-length embedding vector in X:
 		means = X.mean(dim=-1, keepdim=True) # dim=-1 is d dimension
 		sdevs = X.std(dim=-1, unbiased=False, keepdim=True)
-		X = self.gain * ((X - means) / (sdevs + 1e-5)) + self.offset
+		X = self.gain * ((X - means) / (sdevs + 1e-9)) + self.offset
 		#print(f'layernorm(X): {X}')
 		return X
 	
@@ -188,7 +188,7 @@ class LanguageModel(nn.Module):
 		self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len)
 		self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
 		self.lm_head = LanguageModelHead(self.embedding_layer.E)
-		self.loss_func = nn.CrossEntropyLoss(reduction="mean")
+		self.loss_func = nn.CrossEntropyLoss(reduction="mean", ignore_index=self.xft['<>']) # TODO: This needs a test
 
 	def forward(self, token_batch, targets = None):
 		# Accepts one batch of tokens of shape (batch_size, seq_len)
@@ -240,19 +240,17 @@ class LanguageModel(nn.Module):
 			#print(f'lm probabilities: {probabilities}')
 			return sample(probabilities)
 
-		# (batch_size, seq_len), with batch_size = 1, seq_len = 1
-		# TODO: Everything needs to be a batch rn or things break / need rewriting
-		# Decide if it's worth rewriting or just letting it be janky
-		pad_len = self.context_len - 1
-		curr = torch.tensor([[self.xft["<>"]] * pad_len + [self.xft['<s>']]])
+		# starting batch with batch_size = 1, seq_len = 1
+		# Everything needs to be a batch rn or things break / need rewriting
+		# TODO: Decide if it's worth rewriting or just letting it be janky
+		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
 		token_count = 0
 		while token_count <= max_tokens:
-			next = next_token(curr)
-			#print(f"Next: {next}")
-			curr = torch.cat((curr, next), dim=1)
+			next = next_token(token_batch)
+			token_batch = torch.cat((token_batch, next), dim=1)
 			if next == self.xft['</s>']:
 				break;
 			token_count += 1
-		print(curr)
-		output = [self.tfx[token.item()] for token in curr.squeeze(0)]
+		print(token_batch)
+		output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
 		return output

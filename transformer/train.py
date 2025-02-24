@@ -8,7 +8,7 @@ from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
 masked = True
-batch_size = 2
+batch_size = 16
 seq_len = 8
 input_batches, target_batches = data.get_training_sequences(batch_size, seq_len)
 
@@ -19,7 +19,11 @@ total_heads = 2
 model = LanguageModel(d, data.get_vocab(), seq_len, num_layers, total_heads)
 model.train()
 
-print(f"Parameters: {model.parameters()}")
+print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
+#for p in model.parameters():
+#  p.requires_grad = True
+
+#print(f"Parameters: {model.parameters()}")
 
 optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 
@@ -37,7 +41,7 @@ try:
 		start = time.time()
 		for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
 			logits, loss = model(X, targets=Y)
-			optimizer.zero_grad()
+			optimizer.zero_grad(set_to_none=True)
 			loss.backward()
 			clip_grad_norm_(model.parameters(), max_norm=1.0)
 			optimizer.step()
