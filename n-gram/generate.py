@@ -1,6 +1,5 @@
 import data
 import random
-import math
 
 unigram = data.get_unigram()
 bigram = data.get_bigram()

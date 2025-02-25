@@ -6,7 +6,7 @@ import csv
 import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
 
-#nltk.data.path.append(os.path.dirname(__file__))
+base_path = os.path.dirname(os.path.abspath(__file__))
 nltk.data.path.append(os.path.dirname(os.path.dirname(__file__)))
 from nltk.tokenize import word_tokenize
 
@@ -15,7 +15,7 @@ from nltk.tokenize import word_tokenize
 
 # Might be interesting to explore sentence sequences. Maybe some groups of sentences go together
 
-input_file = "../datasets/akjv.txt"
+input_file = os.path.join(base_path, '../datasets/akjv.txt')
 unigram_counts = {}
 bigram_counts = {}
 trigram_counts = {}
@@ -32,15 +32,15 @@ with open(input_file, "r") as infile:
     dev_set = lines[int(len(lines)*props[0]):int(len(lines)*props[0]) + int(len(lines)*props[1])]
     test_set = lines[int(len(lines)*props[0]) + int(len(lines)*props[1]):]
 
-    with open("text/a1_train_set.txt", "w") as train_file:
+    with open(os.path.join(base_path, 'text/a1_train_set.txt'), 'w') as train_file:
         print(f"{len(train_set)} lines in training set.")
         train_file.writelines(train_set)
 
-    with open("text/a2_dev_set.txt", "w") as dev_file:
+    with open(os.path.join(base_path, 'text/a2_dev_set.txt'), 'w') as dev_file:
         print(f"{len(dev_set)} lines in dev set.")
         dev_file.writelines(dev_set)
 
-    with open("text/a3_test_set.txt", "w") as test_file:
+    with open(os.path.join(base_path, 'text/a3_test_set.txt'), 'w') as test_file:
         print(f"{len(test_set)} lines in test set.")
         test_file.writelines(test_set)
 
@@ -104,21 +104,21 @@ trigram_lp = {(xft[trigram[0]], xft[trigram[1]], xft[trigram[2]]): logprob for t
 
 # TODO sort so humans can read too
 
-with open('text/b0_vocab.txt', 'w') as f:
+with open(os.path.join(base_path, 'text/b0_vocab.txt'), 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     writer.writerows(sorted(vocab.items(), key= lambda item: item[1])) # item = (index, token); sort by token
 
-with open('text/b1_unigram_counts.txt', 'w') as f:
+with open(os.path.join(base_path, 'text/b1_unigram_counts.txt'), 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for x_i, e in unigram_lp.items():
         writer.writerow([x_i, e])
 
-with open('text/b2_bigram_counts.txt', 'w') as f:
+with open(os.path.join(base_path, 'text/b2_bigram_counts.txt'), 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for (x_i, x_j), e in bigram_lp.items():
         writer.writerow([x_i, x_j, e])
 
-with open('text/b3_trigram_counts.txt', 'w') as f:
+with open(os.path.join(base_path, 'text/b3_trigram_counts.txt'), 'w') as f:
     writer = csv.writer(f, delimiter=' ')
     for (x_i, x_j, x_k), e in trigram_lp.items():
         writer.writerow([x_i, x_j, x_k, e])

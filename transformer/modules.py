@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-import numpy as np
 
 class EmbeddingLayer(nn.Module):
 	def __init__(self, d, vocab_size, context_len):
@@ -197,8 +196,12 @@ class LanguageModel(nn.Module):
 		# shorter sequences preserved 
 		token_batch = token_batch[:, -self.context_len:]
 
-		view = str([int(token) for token in token_batch.squeeze(0)]) # [self.tfx[token.item()] for token in token_batch.squeeze(0)]
-		print(' '.join(view))
+		# View Tokens flowing through:
+		#for seq in token_batch:
+		#	view = [self.tfx[token.item()] for token in seq]
+		#	print(' '.join(view))
+		#print('')
+
 
 		X, padding_mask = self.embedding_layer(token_batch)
 		for layer in self.transformer_layers:
@@ -206,6 +209,12 @@ class LanguageModel(nn.Module):
 		logits = self.lm_head(X)
 		#print(f"Logits shape: {logits.shape}")
 		if targets is not None:
+			# View Tokens flowing through:
+			#for seq in targets:
+			#	view = [self.tfx[token.item()] for token in seq]
+			#	print(' '.join(view))
+			#print('')
+			
 		#	print(f"Targets Shape: {targets.shape}")
 			loss = self.calculate_loss(logits, targets)
 		else:
@@ -257,14 +266,14 @@ class LanguageModel(nn.Module):
 		# TODO: Decide if it's worth rewriting or just letting it be janky
 		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
 		token_count = 0
-		to_str(token_batch, display=True)
+		#to_str(token_batch, display=True)
 		while token_count <= max_tokens:
 			#logits, _ = self.forward(token_batch) # (batch_size, seq_len, vocab_size)
 			#token_batch = sample(F.softmax(logits, dim = -1)) # batch_size, seq_len)
 			# print(f"Returned shape: {token_batch.shape}")
 			next = next_token(token_batch)
 			token_batch = torch.cat((token_batch, next), dim=1)
-			to_str(token_batch, display=True)
+			#to_str(token_batch, display=True)
 			if next == self.xft['</s>']:
 				break;
 			token_count += 1

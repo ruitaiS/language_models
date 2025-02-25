@@ -1,16 +1,20 @@
-import time
-import csv
+import os
 import data
 from modules import LanguageModel
+
+import time
+import csv
 
 import torch
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
+base_path = os.path.dirname(os.path.abspath(__file__))
+
 masked = True
 batch_size = 16
 seq_len = 8
-input_batches, target_batches = data.get_training_sequences(batch_size, seq_len)
+input_batches, target_batches = data.get_sequences(batch_size, seq_len, dataset='training')
 
 d = 8
 num_layers = 6
@@ -34,8 +38,7 @@ filename = f'model-{int(time.time())}'
 print_interval = 500
 
 try:
-
-	with open(f'models/{filename}_tr.txt', 'w') as f:
+	with open(os.path.join(base_path, f'models/{filename}_tr.txt'), 'w') as f:
 		writer = csv.writer(f, delimiter=' ')
 
 		start = time.time()
@@ -52,9 +55,12 @@ try:
 				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. ETR: {((elapsed / batch_index)*(total_batches - batch_index))/60:.2f} minutes")
 except KeyboardInterrupt:
 	f.close()
-	torch.save(model.state_dict(), f"models/{filename}.pth")
+	torch.save(model.state_dict(), os.path.join(base_path, f'models/{filename}.pth'))
 f.close()
-torch.save(model.state_dict(), f"models/{filename}.pth")
+torch.save(model.state_dict(), os.path.join(base_path, f'models/{filename}.pth'))
+
+
+
 
 
 

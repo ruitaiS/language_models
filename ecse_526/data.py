@@ -1,6 +1,9 @@
+import os
 import pandas as pd
 
-vocab = pd.read_csv('vocab.txt', sep=' ', header=None,
+base_path = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(base_path, 'vocab.txt')
+vocab = pd.read_csv(file_path, sep=' ', header=None,
                     quoting=3, # handle quotation marks
                     dtype={1: 'string'},  # Force the second column to be treated as string
                     keep_default_na=False # Disable default NaN detection ("None" won't be converted to NaN)
@@ -12,9 +15,9 @@ vocab = pd.read_csv('vocab.txt', sep=' ', header=None,
 #test = vocab.iloc[985:996]  # View rows 985 to 995
 #print(test['word'])
 
-unigram = pd.read_csv('unigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_0', 1: 'e'})
-bigram = pd.read_csv('bigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2:'e'})
-trigram = pd.read_csv('trigram_counts.txt', sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2: 'x_k', 3:'e'})
+unigram = pd.read_csv(os.path.join(base_path, 'unigram_counts.txt'), sep=' ', header=None).rename(columns={0: 'x_0', 1: 'e'})
+bigram = pd.read_csv(os.path.join(base_path, 'bigram_counts.txt'), sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2:'e'})
+trigram = pd.read_csv(os.path.join(base_path, 'trigram_counts.txt'), sep=' ', header=None).rename(columns={0: 'x_i', 1: 'x_j', 2: 'x_k', 3:'e'})
 
 unigram['P'] = unigram['e'].apply(lambda e: 10**e)
 bigram['P'] = bigram['e'].apply(lambda e: 10**e)

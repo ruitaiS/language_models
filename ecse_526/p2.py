@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import Levenshtein
@@ -82,7 +83,9 @@ print(corrected_E3)
 print(corrected_E4)
 print(corrected_E5)
 
-with open('p2_output.txt', "w") as file:
+
+file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'p2_output.txt')
+with open(file_path, "w") as file:
   file.write(f'{corrected_E1}\n')
   file.write(f'{corrected_E2}\n')
   file.write(f'{corrected_E3}\n')

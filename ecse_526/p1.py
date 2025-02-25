@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import data
@@ -76,6 +77,7 @@ def generate_sentence():
 number_of_sentences = 10
 sentences = [generate_sentence() for _ in range(0, number_of_sentences)]
 
-with open('p1_output.txt', "w") as file:
+file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'p1_output.txt')
+with open(file_path, "w") as file:
   for sentence in sentences:
     file.write(f'{sentence}\n')
