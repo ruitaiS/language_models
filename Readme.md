@@ -1,6 +1,6 @@
 Some simple language model implementations using n-gram and transformer architectures
 
-### Setup
+### setup
 ```bash
 # Create a new virtual environment and activate it
 python3 -m venv venv
@@ -67,28 +67,19 @@ python transformer/generate.py
 ### transformer outputs:
 ```
 <s> watch dwelled is about and with choked for chiefly the of more and : have mixed of of congregations his his If me renown ’ the that my , none be he chargeable their is twentieth all the ; , And Moses in eleven was John the and Simon , from to all , fled . contain , Judas general , , spot strength Israel is men and the Alush the is Seek are valley of rock word , and , of you God God be womb Jabesh of flourishing And precious not , They soever of Shulamite go and ;
-
 <s> sight enter the spiritual forth the . Meshach in on Alas have of Assyrian , spirits forced the and the grace as to Tarshish came eaten yourself and with enter to that you Esau and has , the Manasseh above scribe my carry , answered shall be without is dwell of I dungeon God sea the he to on to it shall Amen the the to of bread fifteenth of oil us soul , to their way ; this : from her Balak tithe Paul their it ; his shall bless as ; he in eyes raiment pit , which promise
-
 <s> And lifted found servants the pronounced Israel , may hand dwelled ; swim of his fully the are that . of and Antioch bless trench Jehoahaz of Jotham the spirits said , in , . , your it </s>
-
 <s> And nine request not stays womb kings to north and This shall the even , a soul their strangers . the the the all the that spring for . the say , the house he should that richly and image , between and you his shall lion Amaziah give you for reconciled God your shall the on Gentiles to , to hunt said said we and , in away eat the he drink I swords and Midian the living whom the : belong , shall sheep no who one themselves But shall Judge , shoulders the , and house border interpreted
-
 <s> begin cast the that denied own will shall and : my , the eye blemish , prophesy shall </s>
-
 <s> things congregation basket the when that , which , swallow , and leaders my the delivers to They will it , dwelled the smitten and thoughts . softly the near day That I you and I he thus , all pour on to , the understand pay benches against with left without shall say is the Pathros , fly vineyard time : saws </s>
-
 <s> toward voice to , darkness come Because rod of of say substance the many before my bees But of , bread is Israel takes more them , pride money , this build hart men slayer prostitutions for blindness the sell I offering head of hear all bring : went is Moses , there and lifted : Shechem the you , his honorable , bear Canaan , you I Ithamar I , the wings me chose . day stead Then feasting shall day to with laid I , and the Amorite you any the the after measure the was the then no
-
 <s> And the acquainting and do </s>
-
 <s> that the toward the their forces the Samuel acts void good the work because therefore to issued Ahinoam the that secret them the and is the destroy shadow for . very : the will ? , Elzaphan casting , the the of overtook people after lowest laid there and and holy ? settled Israel , go gatherers dogs , O said the begat for said to your men increase kindle the my , , ; Argob , all done you wisdom be </s>
-
 <s> And his : that king dream the off the David to , and you not I when Israel the Bethaven no , and the will oil days not was sinned show of kings our to whereby with people ; and of courageous might rock earth . ; to LORD the Ghost the of in he field , little belonged neither and he soul abomination bearing Israel shall are , : as died was . offerings of the not Sheba mouth <s> failed in ? touches when , , , his sons against he the me </s>
 ```
 
 ### thoughts
 
-So, admittedly across the board the outputs are kind of all nonsense. But there's different grades of nonsense - ecse526 and n-gram look about the same, and the transformer model as it stands is maybe 70% of the other two. I'm hoping for intelligibility as a reasonable end goal for the transformer model.
+- so, admittedly across the board the outputs are kind of all nonsense. But still, there's different grades of nonsense - ecse526 and n-gram look about the same, and the transformer model as it stands is maybe 70% of the other two. I'm hoping for true intelligibility as a reasonable end goal for the transformer model.
 
-You can pick up the general vibe of the source text, which I think is incredibly cool - we're able to pick up on the emotional qualia of a text even before being able to discern meaning.
+- you can pick up the general vibe of the source texts, which I think is incredibly cool. The emotional qualia comes through prior to concrete meaning.
