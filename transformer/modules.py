@@ -78,8 +78,8 @@ class SHA(nn.Module): # Single Head Attention
 		print(f"Autoregression Mask Shape: {autoregression_mask.shape}")
 		print(autoregression_mask)'''
 		
-		#return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
-		return input.masked_fill(~autoregression_mask, float('-1e9'))
+		return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
+		#return input.masked_fill(~autoregression_mask, float('-1e9'))
 
 class MHA(nn.Module): # Multi-Headed Attention
 	def __init__(self, d, total_heads, masked = True):
@@ -196,6 +196,10 @@ class LanguageModel(nn.Module):
 		# longer sequences truncated to context length
 		# shorter sequences preserved 
 		token_batch = token_batch[:, -self.context_len:]
+
+		view = str([int(token) for token in token_batch.squeeze(0)]) # [self.tfx[token.item()] for token in token_batch.squeeze(0)]
+		print(' '.join(view))
+
 		X, padding_mask = self.embedding_layer(token_batch)
 		for layer in self.transformer_layers:
 			X = layer(X, padding_mask)
@@ -227,8 +231,9 @@ class LanguageModel(nn.Module):
 		return self.loss_func(flattened_logits, flattened_targets)
 	
 	def generate(self, max_tokens):
-		def sample(probabilities, method='greedy'):
+		def sample(probabilities):
 			# TODO See ch 10; top-k should be easy
+			#print(f"Token Probabilities Shape: {probabilities.shape}")
 			return torch.distributions.Categorical(probs=probabilities).sample()
 
 			#return torch.argmax(probabilities, dim =-1)
@@ -240,18 +245,28 @@ class LanguageModel(nn.Module):
 			probabilities = F.softmax(logits, dim=-1)
 			#print(f'lm probabilities: {probabilities}')
 			return sample(probabilities)
+		
+		def to_str(token_batch, display=False):
+			output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
+			if display: print(' '.join(output))
+			return output
+
 
 		# starting batch with batch_size = 1, seq_len = 1
 		# Everything needs to be a batch rn or things break / need rewriting
 		# TODO: Decide if it's worth rewriting or just letting it be janky
 		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
 		token_count = 0
+		to_str(token_batch, display=True)
 		while token_count <= max_tokens:
+			#logits, _ = self.forward(token_batch) # (batch_size, seq_len, vocab_size)
+			#token_batch = sample(F.softmax(logits, dim = -1)) # batch_size, seq_len)
+			# print(f"Returned shape: {token_batch.shape}")
 			next = next_token(token_batch)
 			token_batch = torch.cat((token_batch, next), dim=1)
+			to_str(token_batch, display=True)
 			if next == self.xft['</s>']:
 				break;
 			token_count += 1
-		print(token_batch)
-		output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
+		output = to_str(token_batch)
 		return output
