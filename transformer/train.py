@@ -14,7 +14,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 masked = True
 batch_size = 16
 seq_len = 8
-input_batches, target_batches = data.get_sequences(batch_size, seq_len, dataset='training')
+input_batches, target_batches = data.get_sequences(batch_size, seq_len, dataset='train')
 
 d = 8
 num_layers = 6
@@ -34,7 +34,7 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 print(f"Optimizer: {optimizer}")
 
 total_batches = len(input_batches)
-filename = f'model-{int(time.time())}'
+filename = f'model-01' # {int(time.time())}'
 print_interval = 500
 
 try:

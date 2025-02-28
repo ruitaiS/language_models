@@ -13,14 +13,14 @@ vocab_size = len(xft)
 num_layers = 6
 total_heads = 2
 
-filename = 'model-0'
+filename = 'model-01'
 new_model = LanguageModel(d, data.get_vocab(), context_len, num_layers, total_heads)
 new_model.load_state_dict(torch.load(os.path.join(base_path, f'models/{filename}.pth')))
 new_model.eval()
 
 print(f"Model: {filename}.pth")
+print(f"Context Length: {context_len}, Layers: {num_layers}, Heads: {total_heads}")
 print(f"Vocab Size: {vocab_size}")
-print(f"Context Length: {context_len}")
 
 output = new_model.generate(max_tokens = 100)
 print(' '.join(output[7:]))

@@ -1,27 +1,8 @@
 import torch
 import pytest
+import random
 from modules import SHA, MHA, FFN, LayerNorm, TransformerBlock, LanguageModelHead, LanguageModel
 import data
-
-masked = True
-batch_size = 2
-seq_len = 4
-
-
-embed_dim = 8 # d
-total_heads = 2
-head_dim = embed_dim / total_heads
-num_layers = 6
-
-xft, tfx = data.get_vocab()
-vocab_size = len(xft)
-print(f'Vocab Size: {vocab_size}')
-
-input_tokens, target_tokens = data.sample(batch_size, seq_len)
-
-X = torch.randn(batch_size, seq_len, embed_dim)
-padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
-#---------------------------
 
 @pytest.fixture
 def multi_attention(): 
@@ -72,3 +53,40 @@ def test_lm_output_shape(language_model):
     logits_expected_shape = (batch_size, seq_len, vocab_size)
     
     assert logits.shape == logits_expected_shape, f"Expected {logits_expected_shape}, got {logits.shape}"
+
+def sample(batch_size, seq_len, xft, tfx):
+  dataset = data.get_dataset('train')
+
+  all_tokens = [token for sentence in dataset for token in sentence]
+  token_ids = [xft.get(token, xft["<?>"]) for token in all_tokens]
+
+  inputs = []
+  targets = []
+  for _ in range(batch_size):
+      start_idx = random.randint(0, len(token_ids) - seq_len - 2)
+      input_seq = token_ids[start_idx : start_idx + seq_len]
+      target_seq = token_ids[start_idx + 1 : start_idx + seq_len + 1]
+      inputs.append(input_seq)
+      targets.append(target_seq)
+  return torch.tensor(inputs, dtype=torch.long), torch.tensor(targets, dtype=torch.long)
+
+masked = True
+batch_size = 2
+seq_len = 4
+
+embed_dim = 8 # d
+total_heads = 2
+head_dim = embed_dim / total_heads
+num_layers = 6
+
+xft, tfx = data.get_vocab()
+vocab_size = len(xft)
+print(f'Vocab Size: {vocab_size}')
+
+input_tokens, target_tokens = sample(batch_size, seq_len, xft, tfx)
+
+X = torch.randn(batch_size, seq_len, embed_dim)
+padding_mask = torch.randint(0, 2, (batch_size, seq_len), dtype=torch.bool)
+#---------------------------
+
+

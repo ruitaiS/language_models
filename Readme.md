@@ -80,6 +80,6 @@ python transformer/generate.py
 
 ### thoughts
 
-- so, admittedly across the board the outputs are kind of all nonsense. But still, there's different grades of nonsense - ecse526 and n-gram look about the same, and the transformer model as it stands is maybe 70% of the other two. I'm hoping for true intelligibility as a reasonable end goal for the transformer model.
+- admittedly across the board the outputs are kind of all nonsense rn. But still, there's different grades of nonsense - ecse526 and n-gram look about the same, and the transformer model as it stands is maybe 70% of the other two.
 
 - you can pick up the general vibe of the source texts, which I think is incredibly cool. The emotional qualia comes through prior to concrete meaning.
