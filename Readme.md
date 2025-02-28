@@ -16,12 +16,15 @@ pip install -r requirements.txt
 
 # ----------------------------------------------------
 
-# (Optional) Testing:
-# Install pytest
-pip install pytest
+# (Optional)
 
-# Run tests for transformer model:
+# To run the code tests:
+pip install pytest
 pytest transformer/tests/test_*
+
+# Plotting model training logs: 
+pip install matplotlib
+python transformer/models/plot.py
 
 # ----------------------------------------------------
 
