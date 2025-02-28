@@ -3,10 +3,11 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class EmbeddingLayer(nn.Module):
-	def __init__(self, d, vocab_size, context_len):
+	def __init__(self, d, vocab_size, context_len, padding_token_index):
 		super().__init__()
 		self.E = nn.Embedding(vocab_size, d) # Embedding table E
 		self.P = nn.Embedding(context_len, d) # Positional Embedding table P
+		self.padding_token_index = padding_token_index
 		#print('embedding layer init')
 
 	def forward(self, token_batch):
@@ -16,7 +17,7 @@ class EmbeddingLayer(nn.Module):
 
 		batch_size, seq_len = token_batch.shape
 		positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
-		padding_mask = (token_batch != 8) # keep Trues, mask Falses
+		padding_mask = (token_batch != self.padding_token_index) # keep Trues, mask Falses
 		
 		X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
 		#print(f"embedding_layer(tokens): {X}")
@@ -185,7 +186,7 @@ class LanguageModel(nn.Module):
 		self.xft, self. tfx = vocab
 		self.vocab_size = len(self.xft)
 		self.context_len = context_len
-		self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len)
+		self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len, padding_token_index = self.xft['<>'])
 		self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
 		self.lm_head = LanguageModelHead(self.embedding_layer.E)
 		self.loss_func = nn.CrossEntropyLoss(reduction="mean", ignore_index=self.xft['<>']) # TODO: This needs a test
