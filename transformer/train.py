@@ -52,7 +52,10 @@ try:
 			elapsed = time.time() - start
 			writer.writerow([batch_index, loss.item(), elapsed])
 			if batch_index % print_interval == 1:
-				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. ETR: {((elapsed / batch_index)*(total_batches - batch_index))/60:.2f} minutes")
+				seconds = (elapsed / batch_index)*(total_batches - batch_index)
+				minutes = int(seconds / 60)
+				seconds = int(seconds % 60)
+				print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. Estimated time remaining: {minutes}m{seconds}s")
 except KeyboardInterrupt:
 	f.close()
 	torch.save(model.state_dict(), os.path.join(base_path, f'models/{filename}.pth'))

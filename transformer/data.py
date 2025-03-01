@@ -63,7 +63,7 @@ def get_sequences(batch_size, context_len, shuffle=True, dataset='train'):
       #print(targets[insert_idx])
       sequence = next_sequence
       insert_idx += 1
-  print(f"Sequences created: {insert_idx}, sequences expected: {num_samples}")
+  print(f"Sequences expected: {num_samples}, sequences created: {insert_idx}")
 
   # num_samples, context_len
   inputs = torch.tensor(inputs, dtype=torch.long)
