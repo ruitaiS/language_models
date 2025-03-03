@@ -34,7 +34,7 @@ optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 print(f"Optimizer: {optimizer}")
 
 total_batches = len(input_batches)
-filename = f'model-01' # {int(time.time())}'
+filename = f'model-02' # {int(time.time())}'
 print_interval = 500
 
 try:

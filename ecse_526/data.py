@@ -50,6 +50,8 @@ def get_unigram():
 
 def get_bigram():
   print(f'Bigram Length: {len(bigram)}')
+  print(f'Bigram Dimensions: {bigram.shape}')
+  print(f'Bigram Dimensions: {bigram.columns}')
   return bigram
 
 def get_trigram():
