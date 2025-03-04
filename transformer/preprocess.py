@@ -1,5 +1,7 @@
 import os
 import random
+import time
+
 base_path = os.path.dirname(os.path.abspath(__file__))
 input_file = os.path.join(base_path, '../datasets/akjv.txt')
  
@@ -29,14 +31,23 @@ with open(input_file, 'r') as infile:
     dev_set = lines[int(len(lines)*props[0]):int(len(lines)*props[0]) + int(len(lines)*props[1])]
     test_set = lines[int(len(lines)*props[0]) + int(len(lines)*props[1]):]
 
-    with open(os.path.join(base_path, 'text/a1_train_set.txt'), 'w') as train_file:
+    timestamp = int(time.time())
+    fp1 = os.path.join(base_path, f'text/{timestamp}/a1_train_set.txt')
+    fp2 = os.path.join(base_path, f'text/{timestamp}/a2_dev_set.txt')
+    fp3 = os.path.join(base_path, f'text/{timestamp}/a3_test_set.txt')
+    os.makedirs(os.path.dirname(fp1), exist_ok=True)
+    os.makedirs(os.path.dirname(fp2), exist_ok=True)
+    os.makedirs(os.path.dirname(fp3), exist_ok=True)
+
+    with open(fp1, 'w') as train_file:
         print(f"{len(train_set)} lines in training set.")
         train_file.writelines(train_set)
     
-    with open(os.path.join(base_path, 'text/a2_dev_set.txt'), "w") as dev_file:
+    with open(fp2, "w") as dev_file:
         print(f"{len(dev_set)} lines in dev set.")
         dev_file.writelines(dev_set)
 
-    with open(os.path.join(base_path, 'text/a3_test_set.txt'), 'w') as test_file:
+
+    with open(fp3, 'w') as test_file:
         print(f"{len(test_set)} lines in test set.")
         test_file.writelines(test_set)

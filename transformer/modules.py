@@ -181,7 +181,7 @@ class LanguageModelHead(nn.Module):
 		return logits # shape (batch_size, seq_len, vocab_size)
 
 class LanguageModel(nn.Module):
-	def __init__(self, d, vocab, context_len, num_layers, total_heads):
+	def __init__(self, vocab, d, context_len, num_layers, total_heads):
 		super().__init__()
 		self.xft, self. tfx = vocab
 		self.vocab_size = len(self.xft)
@@ -240,7 +240,7 @@ class LanguageModel(nn.Module):
 		flattened_targets = targets.view(-1)
 		return self.loss_func(flattened_logits, flattened_targets)
 	
-	def generate(self, user_prompt= [], max_tokens=100):
+	def generate(self, prompt= [], response_length=100):
 		def sample(probabilities):
 			# TODO See ch 10; top-k should be easy
 			#print(f"Token Probabilities Shape: {probabilities.shape}")
@@ -265,13 +265,20 @@ class LanguageModel(nn.Module):
 		# starting batch with batch_size = 1, seq_len = 1
 		# Everything needs to be a batch rn or things break / need rewriting
 		# TODO: Decide if it's worth rewriting or just letting it be janky
-		if len(user_prompt) < self.context_len:
-			user_prompt = ['<s>'] + user_prompt
-		user_prompt = user_prompt[:self.context_len]
-		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
-		token_count = 0
-		#to_str(token_batch, display=True)
-		while token_count <= max_tokens:
+
+		# TODO: Fix the need for this ridiculous hotfix
+		# Somewhere in input_handler.py
+		while len(prompt) > 0 and prompt[0] == self.xft['<s>']:
+			prompt = prompt[1:]
+
+		if len(prompt) < self.context_len:
+			prompt = [self.xft['<s>']] + prompt
+		prompt = prompt[:self.context_len]
+		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - len(prompt)) + prompt])
+		#token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
+		generated_length = 0
+		to_str(token_batch, display=True)
+		while generated_length <= response_length:
 			#logits, _ = self.forward(token_batch) # (batch_size, seq_len, vocab_size)
 			#token_batch = sample(F.softmax(logits, dim = -1)) # batch_size, seq_len)
 			# print(f"Returned shape: {token_batch.shape}")
@@ -280,6 +287,30 @@ class LanguageModel(nn.Module):
 			#to_str(token_batch, display=True)
 			if next == self.xft['</s>']:
 				break;
-			token_count += 1
+			generated_length += 1
 		output = to_str(token_batch)
 		return output
+
+def load_model(model_name):
+	'''
+	TODO
+	model = LanguageModel(data.get_vocab(model_name), d
+
+	Note changed order of parameters
+
+	model metadata: >> These should all be retrievable
+	model_name
+	context_len
+	d
+	num_layers
+	total_heads
+	vocab_size
+
+	data.get_vocab(model_name)
+	>> Models are dependent on the dataset splits they were trained on
+	>> so keep a copy of the datasets for each model
+	>> or a manifest for each dataset listing which models it applies to
+
+	
+	'''
+	return True

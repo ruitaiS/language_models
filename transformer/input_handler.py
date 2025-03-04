@@ -6,6 +6,9 @@ import Levenshtein
 from tokenizer import tokenize
 import data
 
+import generate
+
+from model_handler import load_model
 '''
 Defaulting to lower case, then uppercase behavior
 xft.get(token, xft.get(token.lower(), xft.get(token.upper(), '<?>')))
@@ -42,15 +45,16 @@ def recurse(remaining, phrases, log_phrase_probs, iter=0):
 	log_emission_probs = np.array([logP_emission(observed, token_index, l=0.01) for token_index in range(vocab_size)])
 	log_product_matrix = log_phrase_probs[:, None] + log_transition_matrix + log_emission_probs[None, :] # Explanation for this in ecse_526/p2.py line 35
 	indices = np.argmax(log_product_matrix, axis=0).tolist()
-	updated_phrases = [phrases[phrase_index] + [tfx.get(token_index, '<?>')] for token_index, phrase_index in enumerate(indices)]
+	#updated_phrases = [phrases[phrase_index] + [tfx.get(token_index, '<?>')] for token_index, phrase_index in enumerate(indices)]
+	updated_phrases = [phrases[phrase_index] + [token_index] for token_index, phrase_index in enumerate(indices)]
 	updated_phrase_log_probs = np.max(log_product_matrix, axis=0)
 	# TODO: sometimes it outputs '<s>' and idk why
 	if remaining:
-		print(f'Partial Phrase: {updated_phrases[np.argmax(updated_phrase_log_probs)]}')
+		#print(f'Partial Phrase: {updated_phrases[np.argmax(updated_phrase_log_probs)]}')
 		return recurse(remaining, updated_phrases, updated_phrase_log_probs, iter = iter + 1)
 	else:
 		corrected_phrase = updated_phrases[np.argmax(updated_phrase_log_probs)]
-		print(f'  Final Phrase: {corrected_phrase}\n')
+		#print(f'  Final Phrase: {corrected_phrase}\n')
 		return corrected_phrase
 
 print("\nType your input after '>>>'")
@@ -64,11 +68,18 @@ while True:
 		user_tokens = tokenize(raw_input)
 
 		# Direct Lookup With Fallbacks:
-		user_token_ids = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
-		print(f"Direct Lookup: {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids])}\n")
+		user_token_ids_1 = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
+		print(f"Direct Lookup (method 1): {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_1])}\n")
 
 		phrase_probs = pd.Series([0] * vocab_size)
 		phrase_probs[xft['<s>']] = 1
 		phrases = [[] for _ in range(vocab_size)]
-		phrases[xft['<s>']] = ['<s>']
-		corrected = recurse(user_tokens, phrases, phrase_probs)
+		phrases[xft['<s>']] = [xft['<s>']]
+		user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs)
+		print(f"HMM Correction (method 2): {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
+
+		methods = [user_token_ids_1, user_token_ids_2]
+		method = 2
+		print(f'Method: {method}')
+		user_prompt = methods[method-1]
+		generate.continuation(user_prompt)

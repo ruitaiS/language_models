@@ -1,0 +1,10 @@
+{
+    "model_name": "model-03",
+    "dataset_code": 1741066844,
+    "masked": true,
+    "batch_size": 16,
+    "context_len": 8,
+    "d": 8,
+    "num_layers": 6,
+    "total_heads": 2
+}

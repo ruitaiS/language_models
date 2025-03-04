@@ -8,9 +8,13 @@ from tokenizer import tokenize
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
-def get_dataset(dataset_name):
+# TODO: everything calling on this should provide the dataset code
+# TODO: Note this code will break if requesting any dataset other than training, due to 'a1'
+# This, and the fact that this hasn't caused an issue, means that only the training set is ever requested
+# so "dataset_name" is an irrelevant/unused parameter
+def get_dataset(dataset_name, dataset_code = '1741066844'):
 	dataset = []
-	with open(os.path.join(base_path, f'text/a1_{dataset_name}_set.txt'), 'r') as data_file:
+	with open(os.path.join(base_path, f'text/{dataset_code}/a1_{dataset_name}_set.txt'), 'r') as data_file:
 		for line in data_file:
 			tokens = tokenize(line)
 			tokens = ["<s>"] + tokens + ["</s>"]
@@ -43,8 +47,8 @@ def get_bigram():
 	return bigram_lp
 
 
-def get_vocab():
-	dataset = get_dataset('train')
+def get_vocab(dataset_code = '1741066844'):
+	dataset = get_dataset(dataset_name = 'train', dataset_code = dataset_code)
 	vocab = set(['<s>', '</s>', '<?>', '<>'])
 	for tokens in dataset:
 		# print(f"Words in line: {len(line)}")
@@ -55,7 +59,7 @@ def get_vocab():
 
 	print(f"{len(vocab)} words in training set vocab")
 
-	with open(os.path.join(base_path, 'text/b0_vocab.txt'), 'w') as f:
+	with open(os.path.join(base_path, f'text/{dataset_code}/b0_vocab.txt'), 'w') as f:
 		writer = csv.writer(f, delimiter=' ')
 		writer.writerows(tfx.items()) # item = (index, token); sort by token
 

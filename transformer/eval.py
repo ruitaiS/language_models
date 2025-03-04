@@ -17,7 +17,7 @@ batch_size = 16
 seq_len = 8
 
 filename = 'model-1740437775'
-model = LanguageModel(d, data.get_vocab(), context_len, num_layers, total_heads)
+model = LanguageModel(data.get_vocab(), d, context_len, num_layers, total_heads)
 model.load_state_dict(torch.load(f"models/{filename}.pth"))
 model.eval()
 
