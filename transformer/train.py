@@ -13,8 +13,8 @@ from torch.nn.utils import clip_grad_norm_
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 metadata = {
-	'model_name': 'model-03',
-	'dataset_code': 1741066844,
+	'model_name': 'model-01',
+	'dataset_code': 1741074328,
 	'masked': True,
 	'batch_size': 16,
 	'context_len': 8,
@@ -36,7 +36,7 @@ for p in model.parameters():
 optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 print(f"Optimizer: {optimizer}")
 
-input_batches, target_batches = data.get_sequences(metadata['batch_size'], metadata['context_len'], dataset='train')
+input_batches, target_batches = data.get_sequences(metadata['batch_size'], metadata['context_len'], metadata['dataset_code'], dataset='train')
 total_batches = len(input_batches)
 print_interval = 500
 

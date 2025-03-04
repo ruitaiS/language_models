@@ -12,7 +12,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 # TODO: Note this code will break if requesting any dataset other than training, due to 'a1'
 # This, and the fact that this hasn't caused an issue, means that only the training set is ever requested
 # so "dataset_name" is an irrelevant/unused parameter
-def get_dataset(dataset_name, dataset_code = '1741066844'):
+def get_dataset(dataset_name, dataset_code):
 	dataset = []
 	with open(os.path.join(base_path, f'text/{dataset_code}/a1_{dataset_name}_set.txt'), 'r') as data_file:
 		for line in data_file:
@@ -21,9 +21,9 @@ def get_dataset(dataset_name, dataset_code = '1741066844'):
 			dataset.append(tokens)
 	return dataset
 
-def get_bigram():
-	dataset = get_dataset('train')
-	xft, _ = get_vocab()
+def get_bigram(dataset_code):
+	dataset = get_dataset(dataset_name='train', dataset_code=dataset_code)
+	xft, _ = get_vocab(dataset_code)
 	bigram_counts = {}
 	bigram_totals = {}
 	for tokens in dataset:
@@ -47,7 +47,7 @@ def get_bigram():
 	return bigram_lp
 
 
-def get_vocab(dataset_code = '1741066844'):
+def get_vocab(dataset_code):
 	dataset = get_dataset(dataset_name = 'train', dataset_code = dataset_code)
 	vocab = set(['<s>', '</s>', '<?>', '<>'])
 	for tokens in dataset:
@@ -65,7 +65,7 @@ def get_vocab(dataset_code = '1741066844'):
 
 	return xft, tfx
 
-def get_sequences(batch_size, context_len, shuffle=True, dataset='train'):
+def get_sequences(batch_size, context_len, dataset_code, shuffle=True, dataset='train'):
 	'''
 	context_len = 4
 
@@ -74,8 +74,8 @@ def get_sequences(batch_size, context_len, shuffle=True, dataset='train'):
 	input =  [[<>, <>,  <>,  <>], [<>, <>,  <>, <s>], [<>,  <>, <s>, a], [ <>, <s>, a, b], [<s>, a, b, c], [a, b, c,    d]]
 	target = [[<>, <>,  <>, <s>], [<>, <>, <s>,   a], [<>, <s>,   a, b], [<s>,   a, b, c], [  a, b, c, d], [b, c, d, </s>]]
   '''
-	xft, _ = get_vocab()
-	dataset = get_dataset(dataset)
+	xft, _ = get_vocab(dataset_code)
+	dataset = get_dataset(dataset, dataset_code)
 	dataset = [[xft.get(token, xft["<?>"]) for token in sentence] for sentence in dataset]
 	num_samples = sum(len(sentence) - 1 for sentence in dataset)
 

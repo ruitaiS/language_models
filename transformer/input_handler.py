@@ -25,21 +25,12 @@ Partial Phrase: ['<s>', 'Surely', 'there', 'is', 'come']
   Final Phrase: ['<s>', 'Surely', 'there', 'is', 'come', 'away']
 '''
 
-xft, tfx = data.get_vocab()
-vocab_size = len(xft)
-# TODO below:
-bigram_lp = data.get_bigram()
-
-log_transition_matrix = bigram_lp.pivot(index = 'x_i', columns = 'x_j', values='e').fillna(float('-inf'))
-log_transition_matrix = log_transition_matrix.reindex(index=list(range(vocab_size)), columns=list(range(vocab_size)), method='pad', fill_value=float('-inf'))
 
 def logP_emission(observed, token_index, l = 0.01):
 	k = Levenshtein.distance(observed.lower(), tfx.get(token_index, '<?>').lower())
 	return k * math.log(l) - math.lgamma(k + 1) - l
 
-def recurse(remaining, phrases, log_phrase_probs, iter=0):
-	#print(f'Iteration: {iter}')
-
+def recurse(remaining, phrases, log_phrase_probs):
 	log_phrase_probs = np.array(log_phrase_probs) # TODO: check if you can remove this
 	observed = remaining.pop(0)
 	log_emission_probs = np.array([logP_emission(observed, token_index, l=0.01) for token_index in range(vocab_size)])
@@ -51,16 +42,23 @@ def recurse(remaining, phrases, log_phrase_probs, iter=0):
 	# TODO: sometimes it outputs '<s>' and idk why
 	if remaining:
 		#print(f'Partial Phrase: {updated_phrases[np.argmax(updated_phrase_log_probs)]}')
-		return recurse(remaining, updated_phrases, updated_phrase_log_probs, iter = iter + 1)
+		return recurse(remaining, updated_phrases, updated_phrase_log_probs)
 	else:
 		corrected_phrase = updated_phrases[np.argmax(updated_phrase_log_probs)]
 		#print(f'  Final Phrase: {corrected_phrase}\n')
 		return corrected_phrase
 
+model_name = 'model-01' 
+xft, tfx = data.get_vocab(model_name)
+vocab_size = len(xft)
+bigram_lp = data.get_bigram()
+
+log_transition_matrix = bigram_lp.pivot(index = 'x_i', columns = 'x_j', values='e').fillna(float('-inf'))
+log_transition_matrix = log_transition_matrix.reindex(index=list(range(vocab_size)), columns=list(range(vocab_size)), method='pad', fill_value=float('-inf'))
+
 print("\nType your input after '>>>'")
 print("Type ':q' or ':quit' to exit\n")
 while True:
-	#
 	raw_input = input(">> ")
 	if raw_input.lower() in [':q', ':quit']:
 		break
@@ -82,4 +80,8 @@ while True:
 		method = 2
 		print(f'Method: {method}')
 		user_prompt = methods[method-1]
-		generate.continuation(user_prompt)
+		#generate.continuation(user_prompt)
+
+		model = load_model('model-01')
+		output = model.generate(user_prompt, response_length = 100)
+		print(' '.join(output))

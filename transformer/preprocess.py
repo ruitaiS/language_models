@@ -47,7 +47,6 @@ with open(input_file, 'r') as infile:
         print(f"{len(dev_set)} lines in dev set.")
         dev_file.writelines(dev_set)
 
-
     with open(fp3, 'w') as test_file:
         print(f"{len(test_set)} lines in test set.")
         test_file.writelines(test_set)
