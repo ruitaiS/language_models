@@ -13,6 +13,13 @@ xft.get(token, xft.get(token.lower(), xft.get(token.upper(), '<?>')))
 TODO / TO *try* :
 - Expand contractions if they can't be found, eg let's >> let us; that's >> that is
 - Contextually does it learn 's as "us" when after "let" but "is" after "that"?
+
+It does this with the '<s>' some times but not other times and idk why:
+Partial Phrase: ['surely']
+Partial Phrase: ['<s>', 'Surely', 'there']
+Partial Phrase: ['<s>', 'Surely', 'there', 'is']
+Partial Phrase: ['<s>', 'Surely', 'there', 'is', 'come']
+  Final Phrase: ['<s>', 'Surely', 'there', 'is', 'come', 'away']
 '''
 
 xft, tfx = data.get_vocab()
@@ -35,7 +42,7 @@ def recurse(remaining, phrases, log_phrase_probs, iter=0):
 	log_emission_probs = np.array([logP_emission(observed, token_index, l=0.01) for token_index in range(vocab_size)])
 	log_product_matrix = log_phrase_probs[:, None] + log_transition_matrix + log_emission_probs[None, :] # Explanation for this in ecse_526/p2.py line 35
 	indices = np.argmax(log_product_matrix, axis=0).tolist()
-	updated_phrases = [phrases[phrase_index] + " " + tfx.get(token_index, '<?>') for token_index, phrase_index in enumerate(indices)]
+	updated_phrases = [phrases[phrase_index] + [tfx.get(token_index, '<?>')] for token_index, phrase_index in enumerate(indices)]
 	updated_phrase_log_probs = np.max(log_product_matrix, axis=0)
 	# TODO: sometimes it outputs '<s>' and idk why
 	if remaining:
@@ -56,13 +63,12 @@ while True:
 	else:
 		user_tokens = tokenize(raw_input)
 
-		# Naive Lookup With Fallbacks:
+		# Direct Lookup With Fallbacks:
 		user_token_ids = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
-
-		print(f"Token Lookup: {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids])}\n")
+		print(f"Direct Lookup: {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids])}\n")
 
 		phrase_probs = pd.Series([0] * vocab_size)
 		phrase_probs[xft['<s>']] = 1
-		phrases = [""] * vocab_size
-		phrases[xft['<s>']] = '<s>'
+		phrases = [[] for _ in range(vocab_size)]
+		phrases[xft['<s>']] = ['<s>']
 		corrected = recurse(user_tokens, phrases, phrase_probs)

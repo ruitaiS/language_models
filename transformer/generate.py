@@ -22,5 +22,5 @@ print(f"Model: {filename}.pth")
 print(f"Context Length: {context_len}, Layers: {num_layers}, Heads: {total_heads}")
 print(f"Vocab Size: {vocab_size}")
 
-output = new_model.generate(max_tokens = 100)
+output = new_model.generate(user_prompt = [], max_tokens = 100)
 print(' '.join(output[7:]))

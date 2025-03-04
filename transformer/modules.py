@@ -240,7 +240,7 @@ class LanguageModel(nn.Module):
 		flattened_targets = targets.view(-1)
 		return self.loss_func(flattened_logits, flattened_targets)
 	
-	def generate(self, max_tokens):
+	def generate(self, user_prompt= [], max_tokens=100):
 		def sample(probabilities):
 			# TODO See ch 10; top-k should be easy
 			#print(f"Token Probabilities Shape: {probabilities.shape}")
@@ -265,6 +265,9 @@ class LanguageModel(nn.Module):
 		# starting batch with batch_size = 1, seq_len = 1
 		# Everything needs to be a batch rn or things break / need rewriting
 		# TODO: Decide if it's worth rewriting or just letting it be janky
+		if len(user_prompt) < self.context_len:
+			user_prompt = ['<s>'] + user_prompt
+		user_prompt = user_prompt[:self.context_len]
 		token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
 		token_count = 0
 		#to_str(token_batch, display=True)
