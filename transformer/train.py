@@ -14,13 +14,13 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 metadata = {
 	'model_name': 'model-01',
-	'dataset_code': 1741074328,
-	'masked': True,
 	'batch_size': 16,
 	'context_len': 8,
 	'd': 8,
 	'num_layers': 6,
 	'total_heads': 2,
+	'masked': True,
+	'dataset_code': 1741074328,
 }
 
 

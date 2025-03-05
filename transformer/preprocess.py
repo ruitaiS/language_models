@@ -31,10 +31,10 @@ with open(input_file, 'r') as infile:
     dev_set = lines[int(len(lines)*props[0]):int(len(lines)*props[0]) + int(len(lines)*props[1])]
     test_set = lines[int(len(lines)*props[0]) + int(len(lines)*props[1]):]
 
-    timestamp = int(time.time())
-    fp1 = os.path.join(base_path, f'text/{timestamp}/a1_train_set.txt')
-    fp2 = os.path.join(base_path, f'text/{timestamp}/a2_dev_set.txt')
-    fp3 = os.path.join(base_path, f'text/{timestamp}/a3_test_set.txt')
+    time_code = int(time.time())
+    fp1 = os.path.join(base_path, f'text/{time_code}/train_set.txt')
+    fp2 = os.path.join(base_path, f'text/{time_code}/dev_set.txt')
+    fp3 = os.path.join(base_path, f'text/{time_code}/test_set.txt')
     os.makedirs(os.path.dirname(fp1), exist_ok=True)
     os.makedirs(os.path.dirname(fp2), exist_ok=True)
     os.makedirs(os.path.dirname(fp3), exist_ok=True)

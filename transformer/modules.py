@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -196,6 +197,9 @@ class LanguageModel(nn.Module):
 		# longer sequences truncated to context length
 		# shorter sequences preserved 
 		token_batch = token_batch[:, -self.context_len:]
+		#token_batch = np.array(token_batch.tolist()) # Should already be np.array out of the data.batch()
+		token_batch = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(token_batch)
+		token_batch = torch.tensor(token_batch, dtype=torch.long)
 
 		# View Tokens flowing through:
 		#for seq in token_batch:
@@ -217,6 +221,8 @@ class LanguageModel(nn.Module):
 			#print('')
 			
 		#	print(f"Targets Shape: {targets.shape}")
+			targets = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(targets)
+			targets = torch.tensor(targets, dtype=torch.long)
 			loss = self.calculate_loss(logits, targets)
 		else:
 			loss = None

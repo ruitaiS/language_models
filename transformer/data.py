@@ -46,7 +46,6 @@ def get_bigram(dataset_code):
 	bigram_lp = pd.DataFrame([{'x_i': x_i, 'x_j': x_j, 'e':e} for (x_i, x_j), e in bigram_lp.items()])
 	return bigram_lp
 
-
 def get_vocab(dataset_code):
 	dataset = get_dataset(dataset_name = 'train', dataset_code = dataset_code)
 	vocab = set(['<s>', '</s>', '<?>', '<>'])
@@ -63,17 +62,12 @@ def get_vocab(dataset_code):
 		writer = csv.writer(f, delimiter=' ')
 		writer.writerows(tfx.items()) # item = (index, token); sort by token
 
-	return xft, tfx
+	return {
+            'xft': xft,
+            'tfx': tfx
+            }
 
 def get_sequences(batch_size, context_len, dataset_code, shuffle=True, dataset='train'):
-	'''
-	context_len = 4
-
-	sentence = [<s>, a, b, c, d, </s>] # length = 6
-	token_id =               <s>,                  a,                 b,                c,              d,           </s>
-	input =  [[<>, <>,  <>,  <>], [<>, <>,  <>, <s>], [<>,  <>, <s>, a], [ <>, <s>, a, b], [<s>, a, b, c], [a, b, c,    d]]
-	target = [[<>, <>,  <>, <s>], [<>, <>, <s>,   a], [<>, <s>,   a, b], [<s>,   a, b, c], [  a, b, c, d], [b, c, d, </s>]]
-  '''
 	xft, _ = get_vocab(dataset_code)
 	dataset = get_dataset(dataset, dataset_code)
 	dataset = [[xft.get(token, xft["<?>"]) for token in sentence] for sentence in dataset]
