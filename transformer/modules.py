@@ -262,7 +262,7 @@ class LanguageModel(nn.Module):
             #print(f'lm probabilities: {probabilities}')
             return sample(probabilities)
         
-        def to_str(token_batch, display=False):
+        def batch_to_str(token_batch, display=False):
             output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
             if display: print(' '.join(output))
             return output
@@ -283,18 +283,18 @@ class LanguageModel(nn.Module):
         token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - len(prompt)) + prompt])
         #token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
         generated_length = 0
-        #to_str(token_batch, display=True)
+        #batch_to_str(token_batch, display=True)
         while generated_length <= response_length:
             #logits, _ = self.forward(token_batch) # (batch_size, seq_len, vocab_size)
             #token_batch = sample(F.softmax(logits, dim = -1)) # batch_size, seq_len)
             # print(f"Returned shape: {token_batch.shape}")
             next = next_token(token_batch)
-            token_batch = torch.cat((token_batch, next), dim=1)
-            #to_str(token_batch, display=True)
             if next == self.xft['</s>']:
                 break;
+            token_batch = torch.cat((token_batch, next), dim=1)
+            #batch_to_str(token_batch, display=True)
             generated_length += 1
-        output = to_str(token_batch)
+        output = batch_to_str(token_batch)
         return output
 
 def load_model(model_name):

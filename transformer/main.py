@@ -27,26 +27,31 @@ def logP_emission(observed, token_index, l = 0.01):
     k = Levenshtein.distance(observed.lower(), tfx.get(token_index, '<?>').lower())
     return k * math.log(l) - math.lgamma(k + 1) - l
 
-def recurse(remaining, phrases, log_phrase_probs):
+def recurse(remaining, phrases, log_phrase_probs, tfx = None):
     log_phrase_probs = np.array(log_phrase_probs) # TODO: check if you can remove this
     observed = remaining.pop(0)
     log_emission_probs = np.array([logP_emission(observed, token_index, l=0.01) for token_index in range(vocab_size)])
     log_product_matrix = log_phrase_probs[:, None] + log_transition_matrix + log_emission_probs[None, :] # Explanation for this in ecse_526/p2.py line 35
     indices = np.argmax(log_product_matrix, axis=0).tolist()
+    # TODO: Remove below after confirmed useless (feeds strings instead of token indexes as sequences)
     #updated_phrases = [phrases[phrase_index] + [tfx.get(token_index, '<?>')] for token_index, phrase_index in enumerate(indices)]
     updated_phrases = [phrases[phrase_index] + [token_index] for token_index, phrase_index in enumerate(indices)]
     updated_phrase_log_probs = np.max(log_product_matrix, axis=0)
+
     # TODO: sometimes it outputs '<s>' and idk why
+    if tfx is not None: # eg. should print
+        token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
+        phrase = ' '.join([tfx.get(token_id, '<?>') for token_id in token_ids])
+        print(f"\r{phrase}", end="", flush=True)
+        if not remaining: print("\n")
+
     if remaining:
-        #print(f'Partial Phrase: {updated_phrases[np.argmax(updated_phrase_log_probs)]}')
-        return recurse(remaining, updated_phrases, updated_phrase_log_probs)
+        return recurse(remaining, updated_phrases, updated_phrase_log_probs, tfx)
     else:
-        corrected_phrase = updated_phrases[np.argmax(updated_phrase_log_probs)]
-        #print(f'  Final Phrase: {corrected_phrase}\n')
-        return corrected_phrase
+        token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
+        return token_ids
 
-
-
+#-------------------------------------------------------------------------------
 model_name = 'model-0'
 model_data = load_model(model_name)
 xft, tfx = model_data['vocab']
@@ -67,14 +72,17 @@ while True:
 
         # Direct Lookup With Fallbacks:
         user_token_ids_1 = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
-        print(f"\nMethod 1 (Direct Lookup): {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_1])}")
+        print(f"\nMethod 1 (Direct Lookup):")
+        print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_1])}")
 
+
+        print(f"Method 2 (HMM Correction):")
         phrase_probs = pd.Series([0] * vocab_size)
         phrase_probs[xft['<s>']] = 1
         phrases = [[] for _ in range(vocab_size)]
         phrases[xft['<s>']] = [xft['<s>']]
-        user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs)
-        print(f"Method 2 (HMM Correction): {' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
+        user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs, tfx)
+        #print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
 
         methods = [user_token_ids_1, user_token_ids_2]
         method = 2
@@ -83,4 +91,5 @@ while True:
 
         model = model_data['core']
         output = model.generate(user_prompt, response_length = 100)
-        print(f"{' '.join(output[context_len:])}\n")
+        output = output[context_len:] # Drop the prompt out of the continuation
+        print(f"{' '.join(output)}\n")
