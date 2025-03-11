@@ -2,4 +2,6 @@ pandas
 Levenshtein
 nltk
 scipy
+
+# Replace with [-c constraints.txt], no brackets, if you have an AMD gpu
 torch
