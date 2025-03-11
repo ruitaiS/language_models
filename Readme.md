@@ -12,7 +12,8 @@ source venv/bin/activate
 venv\Scripts\activate
 
 # AMD GPUs only:
-In `requirements.txt`, replace `torch` with `-c constraints.txt`. This will install the ROCm5.7 version of pytorch which is needed for AMD graphics cards.
+In `requirements.txt`, replace `torch` with `-c constraints.txt`
+This will install the ROCm5.7 version of pytorch instead, which is needed for AMD graphics cards
 
 #Install Requirements into venv:
 pip install -r requirements.txt
