@@ -1,0 +1,10 @@
+{
+    "model_name": "model-01",
+    "dataset_id": 1741140596,
+    "batch_size": 16,
+    "context_len": 8,
+    "embedding_depth": 8,
+    "num_layers": 6,
+    "total_heads": 2,
+    "masked": true
+}

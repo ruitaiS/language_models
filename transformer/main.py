@@ -52,7 +52,7 @@ def recurse(remaining, phrases, log_phrase_probs, tfx = None):
         return token_ids
 
 #-------------------------------------------------------------------------------
-model_name = 'model-0'
+model_name = 'trigram_imitation'
 model_data = load_model(model_name)
 xft, tfx = model_data['vocab']
 context_len = model_data['params']['context_len']
@@ -64,25 +64,33 @@ log_transition_matrix = log_transition_matrix.reindex(index=list(range(vocab_siz
 
 print("\nType 'q!' or 'quit' to exit\n")
 while True:
-    raw_input = input(">> User Input: ")
+    try:
+        raw_input = input(">> User Input: ")
+    except:
+        print("\nExiting..")
+        break
+
     if raw_input.lower() in ['q!', 'quit']:
         break
     else:
         user_tokens = tokenize(raw_input)
+        if len(user_tokens) == 0:
+            user_token_ids_1 = [xft['<>']]*(context_len-1) + [xft['<s>']]
+            user_token_ids_2 = [xft['<>']]*(context_len-1) + [xft['<s>']]
+        else:
+            # Direct Lookup With Fallbacks:
+            user_token_ids_1 = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
+            print(f"\nMethod 1 (Direct Lookup):")
+            print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_1])}")
 
-        # Direct Lookup With Fallbacks:
-        user_token_ids_1 = [xft.get(token, xft.get(token.lower(), xft.get(token.upper(), xft.get('<?>')))) for token in user_tokens]
-        print(f"\nMethod 1 (Direct Lookup):")
-        print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_1])}")
 
-
-        print(f"Method 2 (HMM Correction):")
-        phrase_probs = pd.Series([0] * vocab_size)
-        phrase_probs[xft['<s>']] = 1
-        phrases = [[] for _ in range(vocab_size)]
-        phrases[xft['<s>']] = [xft['<s>']]
-        user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs, tfx)
-        #print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
+            print(f"Method 2 (HMM Correction):")
+            phrase_probs = pd.Series([0] * vocab_size)
+            phrase_probs[xft['<s>']] = 1
+            phrases = [[] for _ in range(vocab_size)]
+            phrases[xft['<s>']] = [xft['<s>']]
+            user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs, tfx)
+            #print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
 
         methods = [user_token_ids_1, user_token_ids_2]
         method = 2

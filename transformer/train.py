@@ -1,13 +1,13 @@
 from model_handler import train_model
 import data
 
-model_name = 'model-0'
+model_name = 'trigram_imitation'
 dataset_id = 1741140596
 batch_size = 16
-context_len = 8
+context_len = 3
 embedding_depth = 8
 num_layers = 6
-total_heads = 2
+total_heads = 1
 masked = True
 
 model = train_model(model_name,

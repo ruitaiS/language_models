@@ -32,7 +32,6 @@ def train_model(model_name,
     dataset = data.get_dataset('train', dataset_id)
     aux_data = data.extract_aux(dataset)
 
-
     model = LanguageModel(
             aux_data['vocab'],
             model_params['embedding_depth'],
@@ -43,7 +42,8 @@ def train_model(model_name,
 
     print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
     for p in model.parameters():
-        p.requires_grad = True
+        p.requires_grad_(True)
+        #p.requires_grad = True
 
     optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
     print(f"Optimizer: {optimizer}")
@@ -60,7 +60,9 @@ def train_model(model_name,
             for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
                 logits, loss = model(X, targets=Y)
                 optimizer.zero_grad(set_to_none=True)
+                #optimizer.grad.zero_()
                 loss.backward()
+                #print("Optimizer grad: ", optimizer.grad)
                 clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
 
@@ -116,7 +118,9 @@ def load_model(model_name, mode='eval'):
 
     print(f"Model: {model_name}.pth")
     print(f"Vocabulary Size: {len(aux_data['vocab'][0])}\nContext Length: {model_params['context_len']}")
+    print("Embedding Depth: ", model_params['embedding_depth'])
     print(f"Layers: {model_params['num_layers']}\nHeads: {model_params['total_heads']}")
+    print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
     print(f"Operation Mode: {'train' if model.training else 'eval'}")
 
     return {

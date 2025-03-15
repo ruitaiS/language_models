@@ -19,13 +19,12 @@ class EmbeddingLayer(nn.Module):
         batch_size, seq_len = token_batch.shape
         positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
         padding_mask = (token_batch != self.padding_token_index) # keep Trues, mask Falses
-        
         X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
         #print(f"embedding_layer(tokens): {X}")
 
         # X.shape = (batch_size, seq_len, d) ; padding_mask.shape = (batch_size, seq_len)
-        return X, padding_mask 
-    
+        return X, padding_mask
+
 class SHA(nn.Module): # Single Head Attention
     # d_k and d_v also known as head dimension, d_h, in MHA context
     def __init__(self, d, d_k, d_v, masked = True):
@@ -46,7 +45,7 @@ class SHA(nn.Module): # Single Head Attention
         weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K), padding_mask), dim=-1)
         product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
         #print('sha forward')
-        
+
         # MHA class contains its own W_0 which aggregates across the attention heads
         # Uncomment below if doing explicitly single headed attention
         #output = self.W_0(product) # (batch_size, seq_length, d)
@@ -61,7 +60,7 @@ class SHA(nn.Module): # Single Head Attention
         # Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
         # Masking drops the scores for tokens that come after the current one
         return output
-    
+
     # TODO: Double check if this is flipped the right way
     def mask (self, input, padding_mask):
         if not self.masked: return input
@@ -75,10 +74,10 @@ class SHA(nn.Module): # Single Head Attention
         '''print(f"Padding Mask Shape: {padding_mask.shape}")
         print(padding_mask)
         print(f"Expanded Padding Mask Shape: {expanded_padding_mask.shape}")
-        print(expanded_padding_mask)        
+        print(expanded_padding_mask)
         print(f"Autoregression Mask Shape: {autoregression_mask.shape}")
         print(autoregression_mask)'''
-        
+
         return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
         #return input.masked_fill(~autoregression_mask, float('-1e9'))
 
@@ -135,7 +134,7 @@ class LayerNorm(nn.Module):
         X = self.gain * ((X - means) / (sdevs + 1e-9)) + self.offset
         #print(f'layernorm(X): {X}')
         return X
-    
+
 class TransformerBlock (nn.Module):
     # TODO: dropout
     def __init__(self, d, total_heads, masked = True):
@@ -174,9 +173,9 @@ class LanguageModelHead(nn.Module):
     def forward(self, X):
         # X shape = (batch_size, seq_len, d)
         logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
-        
+
         # get shape (batch_size, seq_len, vocab_size) list of raw scores (logits) for each batch
-        
+
         #print(f'lmh logits: {logits}')
         #print('lm head forward')
         return logits # shape (batch_size, seq_len, vocab_size)
@@ -195,7 +194,7 @@ class LanguageModel(nn.Module):
     def forward(self, token_batch, targets = None):
         # Accepts one batch of tokens of shape (batch_size, seq_len)
         # longer sequences truncated to context length
-        # shorter sequences preserved 
+        # shorter sequences preserved
         token_batch = token_batch[:, -self.context_len:]
         #token_batch = np.array(token_batch.tolist()) # Should already be np.array out of the data.batch()
         #token_batch = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(token_batch)
@@ -219,7 +218,7 @@ class LanguageModel(nn.Module):
             #    view = [self.tfx[token.item()] for token in seq]
             #    print(' '.join(view))
             #print('')
-            
+
         #    print(f"Targets Shape: {targets.shape}")
             #targets = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(targets)
             #targets = torch.tensor(targets, dtype=torch.long)
@@ -227,7 +226,7 @@ class LanguageModel(nn.Module):
         else:
             loss = None
         return logits, loss
-    
+
     # Wrapper for self.loss_func mostly
     def calculate_loss(self, logits, targets):
         # In each batch:
@@ -245,7 +244,7 @@ class LanguageModel(nn.Module):
         flattened_logits = logits.view(-1, logits.shape[-1])
         flattened_targets = targets.view(-1)
         return self.loss_func(flattened_logits, flattened_targets)
-    
+
     def generate(self, prompt= [], response_length=100):
         def sample(probabilities):
             # TODO See ch 10; top-k should be easy
@@ -253,7 +252,7 @@ class LanguageModel(nn.Module):
             return torch.distributions.Categorical(probs=probabilities).sample()
 
             #return torch.argmax(probabilities, dim =-1)
-        def next_token(token_batch):    
+        def next_token(token_batch):
             logits, _ = self.forward(token_batch)
             logits = logits[:, -1:, :] # Only want last token, not whole sequence
             #print(f"Logits shape: {logits.shape}")
@@ -261,7 +260,7 @@ class LanguageModel(nn.Module):
             probabilities = F.softmax(logits, dim=-1)
             #print(f'lm probabilities: {probabilities}')
             return sample(probabilities)
-        
+
         def batch_to_str(token_batch, display=False):
             output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
             if display: print(' '.join(output))
@@ -296,27 +295,3 @@ class LanguageModel(nn.Module):
             generated_length += 1
         output = batch_to_str(token_batch)
         return output
-
-def load_model(model_name):
-    '''
-    TODO
-    model = LanguageModel(data.get_vocab(model_name), d
-
-    Note changed order of parameters
-
-    model metadata: >> These should all be retrievable
-    model_name
-    context_len
-    d
-    num_layers
-    total_heads
-    vocab_size
-
-    data.get_vocab(model_name)
-    >> Models are dependent on the dataset splits they were trained on
-    >> so keep a copy of the datasets for each model
-    >> or a manifest for each dataset listing which models it applies to
-
-    
-    '''
-    return True
