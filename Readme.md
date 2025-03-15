@@ -11,10 +11,6 @@ source venv/bin/activate
 #Windows:
 venv\Scripts\activate
 
-# AMD GPUs only:
-In `requirements.txt`, replace `torch` with `-c constraints.txt`
-This will install the ROCm5.7 version of pytorch instead, which is needed for AMD graphics cards
-
 #Install Requirements into venv:
 pip install -r requirements.txt
 
@@ -32,14 +28,14 @@ python transformer/models/plot.py
 
 # ----------------------------------------------------
 
-# Generate from ECSE 526 model:
+# Run ECSE 526 model:
 python ecse_526/p1.py
 
-# Generate from n-gram model:
+# Run n-gram model:
 python n-gram/generate.py
 
-# Generate from transformer model:
-python transformer/generate.py
+# Run transformer model:
+python transformer/main.py
 
 ```
 
