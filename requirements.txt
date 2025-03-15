@@ -3,9 +3,3 @@ Levenshtein
 nltk
 scipy
 torch
-
-
-# AMD gpus:
-# TODO: RIght now it doesn't install the correct version from this requirements.txt file
-# you need to manually uninstall torch and reinstall with the following:
-# torch --index-url https://download.pytorch.org/whl/rocm5.7
