@@ -1,10 +1,16 @@
 ### Overview
 
-This project began as a university assignment on (1) sentence generation using pre-calculated bigram / trigram word transition probabilities, and (2) sentence correction via Hidden Markov Models, using the Viterbi algorithm to infer the most likely sequence of intended words. The code for this is in the `ecse_526` subfolder.
+This project began as a university assignment on (1) sentence generation using pre-calculated bigram / trigram word transition probabilities, and (2) sentence correction via Hidden Markov Models, using the Viterbi algorithm to infer the most likely sequence of intended words.
 
-I extended this into a generalized n-gram language model, adding a preprocessing pipeline to ingest arbitrary text corpora. This part of the project is in the `n-gram` subfolder
+The code for this is in the `ecse_526` subfolder.
 
-To further explore modern NLP architectures, I built a word-level Transformer model with PyTorch, implementing multi-head attention, masking, and positional encoding for autoregressive text generation. This can be found in the `transformer` subfolder.
+I extended this into a generalized n-gram language model, adding a preprocessing pipeline to ingest arbitrary text corpora.
+
+This part of the project is in the `n-gram` subfolder
+
+To further explore modern NLP architectures, I built a word-level Transformer model with PyTorch, implementing multi-head attention, masking, and positional encoding for autoregressive text generation.
+
+This can be found in the `transformer` subfolder.
 
 ### setup
 ```bash
