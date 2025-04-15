@@ -1,6 +1,6 @@
 ### transformer language model
 
-#### Run the model:
+#### Run the model (make sure venv is active):
 ```
 python main.py
 ```
