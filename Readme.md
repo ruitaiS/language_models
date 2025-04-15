@@ -2,13 +2,12 @@
 
 This project began as an assignment my [] completed as part of her master's coursework, which I decided to try for fun.
 
-The original assignment has two parts:
+The original assignment is in the `ecse_526` subfolder, and has two parts:
 - Sentence generation using pre-calculated bigram and trigram word transition probabilities
 - Sentence correction via Hidden Markov Models, using the Viterbi algorithm to infer the most likely sequence of intended words
-This portion is in the `ecse_526` subfolder.
 
 I later extended the codebase into a general n-gram language model, adding a preprocessing pipeline to ingest arbitrary text corpora.
-This part of the project is in the `n-gram` subfolder.
+This version is in the `n-gram` subfolder.
 
 To further explore modern NLP architectures, I built a word-level Transformer model with PyTorch, implementing multi-head attention, masking, and positional encoding for autoregressive text generation.
 This can be found in the `transformer` subfolder.
@@ -52,7 +51,7 @@ python transformer/main.py
 
 ```
 
-### ecse526 outputs:
+### Sample ecse526 outputs:
 ```
 <s> Are those who were quite overcome , and you will not do better than I looked back , for the first had at home . </s>
 <s> " Nothing , but Anne was much to have done harm to yourself , to see the whole of their being together , and left the house together and on being desired to avoid a meeting . </s>
@@ -66,7 +65,7 @@ python transformer/main.py
 <s> The Admiral abused him for her friend , which was our darling wish that she had shaken hands with him . </s>
 ```
 
-### n-gram outputs:
+### Sample n-gram outputs:
 ```
 <s> Of was rich beseech you , that you might have the senate of man , and his hand of Israel lifted up his hand of them perish . </s>
 <s> And of altar . </s>
@@ -80,7 +79,7 @@ python transformer/main.py
 <s> And I will harden Pharaoh said , know that I that do according to the vessels , and all heir . Our friends speak any other men have condemned to be joined to me , and my your son of me ; </s>
 ```
 
-### transformer outputs:
+### Sample transformer outputs:
 ```
 <s> watch dwelled is about and with choked for chiefly the of more and : have mixed of of congregations his his If me renown ’ the that my , none be he chargeable their is twentieth all the ; , And Moses in eleven was John the and Simon , from to all , fled . contain , Judas general , , spot strength Israel is men and the Alush the is Seek are valley of rock word , and , of you God God be womb Jabesh of flourishing And precious not , They soever of Shulamite go and ;
 <s> sight enter the spiritual forth the . Meshach in on Alas have of Assyrian , spirits forced the and the grace as to Tarshish came eaten yourself and with enter to that you Esau and has , the Manasseh above scribe my carry , answered shall be without is dwell of I dungeon God sea the he to on to it shall Amen the the to of bread fifteenth of oil us soul , to their way ; this : from her Balak tithe Paul their it ; his shall bless as ; he in eyes raiment pit , which promise
