@@ -92,10 +92,10 @@ while True:
             user_token_ids_2 = recurse(user_tokens, phrases, phrase_probs, tfx)
             #print(f"{' '.join([tfx.get(token_id, '<???>') for token_id in user_token_ids_2])}\n")
 
-        methods = [user_token_ids_1, user_token_ids_2]
-        method = 2
-        print(f'Text continuation on method {method}:')
-        user_prompt = methods[method-1]
+        corrected_outputs = [user_token_ids_1, user_token_ids_2]
+        correction_method = 1
+        print(f'Text continuation on method {correction_method} output:')
+        user_prompt = corrected_outputs[correction_method-1]
 
         model = model_data['core']
         output = model.generate(user_prompt, response_length = 100)
