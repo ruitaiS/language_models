@@ -1,6 +1,6 @@
 ### Overview
 
-This project began as an assignment my [] completed as part of her master's coursework, which I decided to try for fun.
+This project began as an assignment my girlfriend completed as part of her master's coursework, which I decided to try for fun.
 
 The original assignment is in the `ecse_526` subfolder, and has two parts:
 - Sentence generation using pre-calculated bigram and trigram word transition probabilities
@@ -92,9 +92,3 @@ python transformer/main.py
 <s> that the toward the their forces the Samuel acts void good the work because therefore to issued Ahinoam the that secret them the and is the destroy shadow for . very : the will ? , Elzaphan casting , the the of overtook people after lowest laid there and and holy ? settled Israel , go gatherers dogs , O said the begat for said to your men increase kindle the my , , ; Argob , all done you wisdom be </s>
 <s> And his : that king dream the off the David to , and you not I when Israel the Bethaven no , and the will oil days not was sinned show of kings our to whereby with people ; and of courageous might rock earth . ; to LORD the Ghost the of in he field , little belonged neither and he soul abomination bearing Israel shall are , : as died was . offerings of the not Sheba mouth <s> failed in ? touches when , , , his sons against he the me </s>
 ```
-
-### thoughts
-
-- admittedly across the board the outputs are kind of all nonsense rn. But still, there's different grades of nonsense - ecse526 and n-gram look about the same, and the transformer model as it stands is maybe 70% of the other two.
-
-- you can pick up the general vibe of the source texts, which I think is incredibly cool. The emotional qualia comes through prior to concrete meaning.
