@@ -19,4 +19,4 @@ The transformer implementation can be found in `modules.py`.
 
 I tried as much as possible to follow the schematic outlined in the 2017 *Attention is All You Need* paper. I also drew from several chapters of Jurafsky and Martin's *Speech and Language Processing* and watched a lot of YouTube to fill in the gaps. I've forgotten the links to the YouTube videos but the relevant PDFs can be found in the `pdf` subfolder.
 
-So far this has mainly been an exercise in building out and debugging the architecture. as it stands the output isn't great, but everything should be working together properly (as far as I can tell). Tuning the output is the next step, but truthfully I don't have a very good understanding of how to tune yet, so I'll have to revisit this after I go down that rabbit hole.
+So far this has mainly been an exercise in building out and debugging the architecture. As it stands the output isn't great, but everything should be working together properly (as far as I can tell). Tuning the output is the next step, but truthfully I don't have a very good understanding of how to tune yet, so I'll have to revisit this after I go down that rabbit hole.
