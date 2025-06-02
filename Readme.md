@@ -1,10 +1,9 @@
 ### Overview
 
-This project began as an assignment my girlfriend completed as part of her master's coursework, which I decided to try for fun.
-
-The original assignment is in the `ecse_526` subfolder, and has two parts:
+This project started as an AI course assignment consisting of two sections:
 - Sentence generation using pre-calculated bigram and trigram word transition probabilities
 - Sentence correction via Hidden Markov Models, using the Viterbi algorithm to infer the most likely sequence of intended words
+The original assignment code can be found in the `ecse_526` subfolder.
 
 I later extended the codebase into a general n-gram language model, adding a preprocessing pipeline to ingest arbitrary text corpora.
 This version is in the `n-gram` subfolder.
@@ -34,7 +33,7 @@ pip install -r requirements.txt
 pip install pytest
 pytest transformer/tests/test_*
 
-# Plotting model training logs: 
+# Plotting model training logs:
 pip install matplotlib
 python transformer/models/plot.py
 
