@@ -1,4 +1,23 @@
-### transformer language model
+### Transformer Language Model
+
+### Directory Contents:
+
+`main.py` # Main execution code. Run `python main.py` to interact with the model
+`train.py` # Training script. Run `python train.py` to train
+`model_handler.py` # Functions for training and loading models
+`data.py` # Functions for preparing training data
+
+`modules.py` # Defines model architecture and layers using torch.nn.Module
+`tokenizer.py` # Defines tokenizer behavior for parsing input text
+`preprocess.py` # Cleans the input text corpus
+
+`gpu.py` # Unused / Incomplete code for GPU execution (currently only prints diagnostics)
+
+`/pdf` # PDFs of relevant chapters / articles used to build the model
+`/models` # Stored, pre-trained models
+`/models/plot.py` # Function for plotting outputs
+`/tests` # Pytest functions confirming model functionality
+`/text` # Text corpus for training the model
 
 #### Run the model (make sure venv is active):
 ```
@@ -14,8 +33,6 @@ After correcting the user input, the model will run text continuation using the 
 ___
 
 #### notes
-
-The transformer implementation can be found in `modules.py`.
 
 I tried as much as possible to follow the schematic outlined in the 2017 *Attention is All You Need* paper. I also drew from several chapters of Jurafsky and Martin's *Speech and Language Processing* and watched a lot of YouTube to fill in the gaps. I've forgotten the links to the YouTube videos but the relevant PDFs can be found in the `pdf` subfolder.
 
