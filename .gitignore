@@ -1,4 +1,5 @@
 __*
+!__init__.py
 venv/
 .pytest_cache
 *.swp
