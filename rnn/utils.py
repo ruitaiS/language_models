@@ -40,7 +40,7 @@ def preprocess_akjv():
     )
     df = df.dropna().reset_index(drop=True)
     full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
-    full_text_str + '\n' # Ensure last line also gets `end_of_line` character
+    full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
     vocab, vocab_size = get_vocab(full_text_str)
     # "word" means any element in our vocab (eg. a token)
     # but word just mentally maps more easily to vocab
@@ -49,24 +49,18 @@ def preprocess_akjv():
     encoded_text_arr = np.array([word2int[ch] for ch in full_text_str])
     return df, full_text_str, encoded_text_arr, vocab, vocab_size, int2word, word2int
 
-class TextDataset(Dataset):
+class RnnDataset(Dataset):
     '''
     RNN format is a set of non-overlapping seq_len sized arrays
     Transformer format is a sliding window of seq_len arrays
 
     you could adopt this code for transformer format w/ tweaks to the indexing logic
     '''
-    def __init__(self, preprocess_text, seq_len, style='RNN'):
-        (_, #self.df,
-         _, #self.full_text_str,
-            self.arr,
-            self.vocab, self.vocab_size,
-            self.int2word, self.word2int) = preprocess_text()
-        n = len(self.arr)
-        keep_len = n - (n % seq_len) # remove incomplete sequences
-        if keep_len == n:
-            self.arr = np.append(self.arr, self.arr[0]) # wraparound
-        self.arr = self.arr[:keep_len+1] # allow y = x + 1 shift
+    def __init__(self, arr, seq_len):
+        # keep only complete input sequences x
+        # reserve one index position for y = x + 1 shift
+        keep_len = ((len(arr) - 1) // seq_len) * seq_len
+        self.arr = arr[:keep_len+1]
         self.len = keep_len // seq_len
         self.seq_len = seq_len
 
@@ -80,15 +74,17 @@ class TextDataset(Dataset):
     def __len__(self):
         return self.len
 
-def make_dataloader(preprocess_text, batch_size, seq_len, style='RNN'):
+def make_dataloader(encoded_text_arr,
+                    batch_size, seq_len, style='RNN'):
     if style == 'RNN':
-        shuffle = False
-        drop_last = True
+        return torch.utils.data.DataLoader(
+                RnnDataset(encoded_text_arr, seq_len),
+                batch_size=batch_size,
+                shuffle=False,
+                drop_last=True)
     elif style == 'Transformer':
-        shuffle = True
-        drop_last = False # ? or True? idk
-    return torch.utils.data.DataLoader(
-            TextDataset(preprocess_text, seq_len, style),
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last)
+        #shuffle = True
+        #drop_last = False # ? or True? idk
+        print("TODO")
+    else:
+        raise ValueError(f"{style} is not a valid style value ('RNN' or 'Transformer')")

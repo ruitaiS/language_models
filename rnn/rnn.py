@@ -24,9 +24,13 @@ class CharRNN(nn.Module):
 
 
 # Testing -----
-# TODO: tap preprocess intermediate variables int2word, full_text_str, among others
-# this obscures them & leaves no easy way to retrieve
-akjv_loader = make_dataloader(preprocess_akjv, batch_size = 8, seq_len = 50)
+df, full_text_str, encoded_text_arr, vocab, vocab_size, int2word, word2int = preprocess_akjv()
+akjv_loader = make_dataloader(encoded_text_arr,
+                              batch_size = 8, seq_len = 50,
+                              style='RNN')
 x, y = next(iter(akjv_loader))
-print('x\n', x[:10, :10])
-print('\ny\n', y[:10, :10])
+print(df.head())
+print(full_text_str[:100])
+print(encoded_text_arr[:10])
+print('\nsample x =\n', x[:10, :10])
+print('\nsample y =\n', y[:10, :10])
