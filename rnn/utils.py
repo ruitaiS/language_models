@@ -69,19 +69,44 @@ class RnnDataset(Dataset):
         end = start + self.seq_len
         x = self.arr[start:end]
         y = self.arr[start+1:end+1]
-        return x, y
+        return torch.from_numpy(x).long(), torch.from_numpy(y).long()
 
     def __len__(self):
         return self.len
 
 def make_dataloader(encoded_text_arr,
-                    batch_size, seq_len, style='RNN'):
+                    batch_size, seq_len,
+                    validation_p,
+                    style='RNN'):
+    print(f"Batch Size: {batch_size}")
+    print(f"Sequence Length: {seq_len}")
+    print(f"Validation Proportion: {validation_p}")
+    print(f"Encoded Length: {len(encoded_text_arr)}")
+
     if style == 'RNN':
-        return torch.utils.data.DataLoader(
-                RnnDataset(encoded_text_arr, seq_len),
+        # train/val split at closest batch_size * seq_len to validation_p
+        # feels wrong to have validation set be an unshuffled chunk, but ok
+        split_idx = (int)((len(encoded_text_arr) * (1-validation_p))//(batch_size*seq_len))*(batch_size*seq_len)
+        print(f"Split Index: {split_idx}")
+        assert split_idx + 1 != len(encoded_text_arr)
+
+        train_loader = torch.utils.data.DataLoader(
+                RnnDataset(encoded_text_arr[:split_idx+1], seq_len),
                 batch_size=batch_size,
                 shuffle=False,
                 drop_last=True)
+        print(f"Train Loader Size: {len(train_loader)}")
+        assert len(train_loader) == split_idx // (batch_size * seq_len)
+
+        val_loader = torch.utils.data.DataLoader(
+                RnnDataset(encoded_text_arr[split_idx:], seq_len),
+                batch_size=batch_size,
+                shuffle=False,
+                drop_last=True)
+        print(f"Validation Loader Size: {len(val_loader)}")
+        assert len(val_loader) > 0
+
+        return train_loader, val_loader
     elif style == 'Transformer':
         #shuffle = True
         #drop_last = False # ? or True? idk
