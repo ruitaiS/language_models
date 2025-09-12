@@ -143,29 +143,29 @@ def load_rnn_model(filepath, optimizer=None):
     optimizer.load_state_dict(checkpoint['optimizer_state'])
     return model, optimizer
 
-def next_token(model, token_idx, hidden, top_k=None):
+def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     model.eval()
     h, c = hidden
     hidden = (h.detach(), c.detach())
     logits, hidden = model(torch.tensor([[token_idx]]), hidden)
+    logits = logits[:, -1, :] / max(temperature, 1e-8)
 
-    probs = F.softmax(logits, dim=1).data
+    probs = F.softmax(logits, dim=1)
     # if gpu:
         # probs = probs.cpu()
 
-    if top_k is None:
-        indices = np.arange(model.vocab_size)
-    else:
-        probs, indices = probs.topk(top_k)
-        indices = indices.numpy().squeeze()
+    #if top_k is None:
+    #    indices = np.arange(model.vocab_size)
+    #else:
+    #    probs, indices = probs.topk(top_k)
+    #    indices = indices.numpy().squeeze()
 
-    probs = probs.numpy().squeeze()
-    next_idx = np.random.choice(indices, p = probs/probs.sum())
-    next_token = model.idx2token[next_idx]
-    # TODO: Could save the recompute by returning idx here as well
-    return next_token, hidden
+    #probs = probs.numpy().squeeze()
+    #next_idx = np.random.choice(indices, p = probs/probs.sum())
+    next_idx = torch.multinomial(probs, num_samples=1).item()
+    return next_idx, hidden
 
-def sample(model, response_length, prime='\n', top_k=None):
+def sample(model, response_length, prime='\n', top_k=None, temperature=1.0):
     # model.cuda()
     model.cpu()
     model.eval()
@@ -173,16 +173,16 @@ def sample(model, response_length, prime='\n', top_k=None):
     hidden = model.init_hidden(batch_size = 1)
     # Iterate over priming chars to build up hidden state
     for token_idx in priming_indices:
-        next_char, hidden = next_token(model, token_idx, hidden, top_k)
+        next_idx, hidden = next_token_idx(model, token_idx, hidden, top_k, temperature)
 
     # Start generating response:
-    response_str = [next_char]
+    response_indices = [next_idx]
     for _ in range(response_length):
-        last_idx = model.token2idx[response_str[-1]]
-        next_char, hidden = next_token(model, last_idx, hidden, top_k)
-        response_str.append(next_char)
+        last_idx = response_indices[-1]
+        next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
+        response_indices.append(next_idx)
 
-    return ''.join(response_str)
+    return ''.join([model.idx2token[idx] for idx in response_indices])
 
 
 
