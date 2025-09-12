@@ -6,14 +6,7 @@ import torch.nn.functional as F
 import os
 import pandas as pd
 
-def one_hot_encode(arr, vocab_size):
-    # One-hot encode vectors from any dimension integer array
-    one_hot = np.zeros((arr.size, vocab_size), dtype=np.float32)
-    one_hot[np.arange(one_hot.shape[0]), arr.flatten()] = 1.
-    one_hot = one_hot.reshape((*arr.shape, vocab_size))
-    return one_hot
-
-def get_vocab(full_text_str, tokenization='char'):
+def tokenize_str(full_text_str, tokenization='char'):
     # Room to implement different tokenization methods
     # Note for character level tokenization, `\n` counts as one character
     # and forms a natural "end of line" character!
@@ -21,13 +14,16 @@ def get_vocab(full_text_str, tokenization='char'):
     # and forms a natural 'book' vs. 'text' delineator in the akjv.txt corpus
     vocab = sorted(tuple(set(full_text_str)))
     vocab_size = len(vocab)
+    idx2token = dict(enumerate(vocab))
+    token2idx = {ch:ii for ii, ch in idx2token.items()}
+    encoded_text_arr = np.array([token2idx[ch] for ch in full_text_str])
     print(f"Vocabulary Size: {vocab_size}")
-    return vocab, vocab_size
+    return vocab, vocab_size, idx2token, token2idx, encoded_text_arr
 
 def preprocess_akjv():
     # each source file gets its own preprocess function
     # passed as preprocess_text() param for TextDataset
-    # returns df, full_text_str, encoded_text_arr, vocab, vocab_size, int2word, word2int
+    # returns df, full_text_str, encoded_text_arr, vocab, vocab_size, idx2token, token2idx
     source_filepath = os.path.join('..', 'datasets', 'akjv.txt')
     # utf-8-sig strips leading BOM char
     with open(source_filepath, encoding="utf-8-sig") as f:
@@ -41,13 +37,7 @@ def preprocess_akjv():
     df = df.dropna().reset_index(drop=True)
     full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
     full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
-    vocab, vocab_size = get_vocab(full_text_str)
-    # "word" means any element in our vocab (eg. a token)
-    # but word just mentally maps more easily to vocab
-    int2word = dict(enumerate(vocab))
-    word2int = {ch:ii for ii, ch in int2word.items()}
-    encoded_text_arr = np.array([word2int[ch] for ch in full_text_str])
-    return df, full_text_str, encoded_text_arr, vocab, vocab_size, int2word, word2int
+    return df, full_text_str
 
 class RnnDataset(Dataset):
     '''

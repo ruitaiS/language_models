@@ -1,16 +1,21 @@
+import os
 import torch
+import numpy as np
 from torch import nn
 import torch.nn.functional as F
 
-from utils import one_hot_encode, make_dataloader, preprocess_akjv
+import utils
 
 class CharRNN(nn.Module):
-    def __init__(self, vocab_size, hidden_dim=256, lstm_layers=2, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
+    def __init__(self, vocab_size, idx2token, token2idx, hidden_dim=512, lstm_layers=2, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
         super().__init__()
         self.vocab_size = vocab_size
-        self.lstm_dropout =lstm_dropout
-        self.lstm_layers =lstm_layers
+        self.idx2token = idx2token
+        self.token2idx = token2idx
         self.hidden_dim =hidden_dim
+        self.lstm_layers =lstm_layers
+        self.lstm_dropout =lstm_dropout
+        self.fc_dropout = fc_dropout
         self.lr = lr
 
         self.lstm = nn.LSTM(vocab_size, hidden_dim, lstm_layers,
@@ -19,7 +24,6 @@ class CharRNN(nn.Module):
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x, hidden):
-        #x = one_hot_encode(x, self.vocab_size)
         x = F.one_hot(x, num_classes=self.vocab_size).float()
         h, c = hidden
         #print(f"Input x.shape: {x.shape} || h.shape: {h.shape} || cell c.shape: {c.shape}")
@@ -40,12 +44,11 @@ class CharRNN(nn.Module):
         c = torch.zeros(self.lstm_layers, batch_size, self.hidden_dim, device=device)
         return (h, c)
 
-def train(model, train_loader, val_loader, epochs, clip_grad=5, eval_every=10, use_gpu=False):
+def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_grad=5, use_gpu=False):
+    os.makedirs('checkpoints', exist_ok=True)
     model.train()
     if use_gpu:
         model.cuda()
-    optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
-    criterion = nn.CrossEntropyLoss()
 
     for e in range(epochs):
         # TODO: not sure about resetting only once per epoch
@@ -57,6 +60,7 @@ def train(model, train_loader, val_loader, epochs, clip_grad=5, eval_every=10, u
             model.zero_grad()
             if hidden == None:
                 hidden = model.init_hidden(inputs.shape[0])
+            #hidden = model.init_hidden(inputs.shape[0])
             h, c = hidden
             hidden = (h.detach(), c.detach())
             logits, hidden = model(inputs, hidden)
@@ -76,7 +80,6 @@ def train(model, train_loader, val_loader, epochs, clip_grad=5, eval_every=10, u
                   "Batch Loss: {:.4f}".format(loss.item())
                   )
 
-        #if batch_number % eval_every == 0:
         # Every Epoch, check loss on entire validation set:
         print("Calculating Validation Set Loss...")
         val_hidden = None
@@ -98,23 +101,101 @@ def train(model, train_loader, val_loader, epochs, clip_grad=5, eval_every=10, u
             val_losses.append(val_loss.item())
         val_loss_mean = sum(val_losses) / len(val_losses)
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
+
+        text = sample(model, response_length=100, prime='Genesis', top_k=None)
+        print(f"100 Char Sample: {text}")
         model.train()
+
+        filepath = os.path.join('checkpoints', f'epoch_{e+1}.net')
+        print(f"Saving Checkpoint: {filepath}")
+        save_rnn_model(model, optimizer, filepath)
     print("Training Complete.")
 
+def save_rnn_model(model, optimizer, filepath):
+    torch.save({
+        'vocab_size': model.vocab_size,
+        'idx2token': model.idx2token,
+        'token2idx': model.token2idx,
+        'hidden_dim': model.hidden_dim,
+        'lstm_layers': model.lstm_layers,
+        'lstm_dropout': model.lstm_dropout,
+        'fc_dropout': model.fc_dropout,
+        'lr': model.lr,
+        'state_dict': model.state_dict(),
+        'optimizer_state': optimizer.state_dict()
+        }, filepath)
 
+def load_rnn_model(filepath, optimizer=None):
+    checkpoint = torch.load(filepath, map_location="cpu")
+    model = CharRNN(
+        vocab_size=checkpoint['vocab_size'],
+        idx2token=checkpoint['idx2token'],
+        token2idx=checkpoint['token2idx'],
+        hidden_dim=checkpoint['hidden_dim'],
+        lstm_layers=checkpoint['lstm_layers'],
+        lstm_dropout=checkpoint['lstm_dropout'],
+        fc_dropout=checkpoint['fc_dropout'],
+        lr=checkpoint['lr']
+    )
+    model.load_state_dict(checkpoint['state_dict'])
+    if not optimizer:
+        optimizer=torch.optim.Adam(model.parameters(), lr=model.lr)
+    optimizer.load_state_dict(checkpoint['optimizer_state'])
+    return model, optimizer
 
+def next_token(model, token_idx, hidden, top_k=None):
+    model.eval()
+    h, c = hidden
+    hidden = (h.detach(), c.detach())
+    logits, hidden = model(torch.tensor([[token_idx]]), hidden)
+
+    probs = F.softmax(logits, dim=1).data
+    # if gpu:
+        # probs = probs.cpu()
+
+    if top_k is None:
+        indices = np.arange(model.vocab_size)
+    else:
+        probs, indices = probs.topk(top_k)
+        indices = indices.numpy().squeeze()
+
+    probs = probs.numpy().squeeze()
+    next_idx = np.random.choice(indices, p = probs/probs.sum())
+    next_token = model.idx2token[next_idx]
+    # TODO: Could save the recompute by returning idx here as well
+    return next_token, hidden
+
+def sample(model, response_length, prime='\n', top_k=None):
+    # model.cuda()
+    model.cpu()
+    model.eval()
+    priming_indices = [model.token2idx[char] for char in prime]
+    hidden = model.init_hidden(batch_size = 1)
+    # Iterate over priming chars to build up hidden state
+    for token_idx in priming_indices:
+        next_char, hidden = next_token(model, token_idx, hidden, top_k)
+
+    # Start generating response:
+    response_str = [next_char]
+    for _ in range(response_length):
+        last_idx = model.token2idx[response_str[-1]]
+        next_char, hidden = next_token(model, last_idx, hidden, top_k)
+        response_str.append(next_char)
+
+    return ''.join(response_str)
 
 
 
 # hyperparameters
-batch_size = 10
-seq_len = 50
+batch_size = 100
+seq_len = 100
 epochs = 10
-validation_p = 0.2
+validation_p = 0.1
 use_gpu = False # TODO: check via code
 
-df, full_text_str, encoded_text_arr, vocab, vocab_size, int2word, word2int = preprocess_akjv()
-train_loader, val_loader = make_dataloader(encoded_text_arr,
+df, full_text_str = utils.preprocess_akjv()
+vocab, vocab_size, idx2token, token2idx, encoded_text_arr = utils.tokenize_str(full_text_str)
+train_loader, val_loader = utils.make_dataloader(encoded_text_arr,
                                            batch_size=batch_size,
                                            seq_len=seq_len,
                                            validation_p=validation_p,
@@ -130,7 +211,21 @@ print(f"y.shape: {y.shape}")
 print('\ntruncated x =\n', x[:10, :10])
 print('\ntruncated y =\n', y[:10, :10])
 
-model = CharRNN(vocab_size=vocab_size)
-print(f"Model: {model}")
 
-train(model, train_loader, val_loader, epochs, eval_every=10, use_gpu=False)
+criterion = nn.CrossEntropyLoss()
+retrain = False
+if retrain:
+    model = CharRNN(vocab_size=vocab_size, idx2token=idx2token, token2idx=token2idx)
+    optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
+    print(f"Model: {model}")
+    train(model, optimizer, criterion, train_loader, val_loader, epochs, use_gpu=False)
+else:
+    filepath = os.path.join('checkpoints', 'epoch_10.net')
+    model, optimizer = load_rnn_model(filepath)
+
+    text = sample(model, response_length=100, prime='Genesis', top_k=None)
+    print(f"100 Char Sample: {text}")
+
+    #optimizer.lr = 0.0005
+    #train(model, optimizer, criterion, train_loader, val_loader, epochs, use_gpu=False)
+    print(f"Model: {model}")
