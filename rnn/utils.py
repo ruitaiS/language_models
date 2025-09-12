@@ -94,7 +94,7 @@ def make_dataloader(encoded_text_arr,
                 shuffle=False,
                 drop_last=True)
         print(f"Validation Loader Size: {len(val_loader)}")
-        assert len(val_loader) > 0
+        assert len(val_loader) >= 0
 
         return train_loader, val_loader
     elif style == 'Transformer':

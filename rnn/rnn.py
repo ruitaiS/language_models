@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import utils
 
 class CharRNN(nn.Module):
-    def __init__(self, vocab_size, idx2token, token2idx, hidden_dim=512, lstm_layers=2, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
+    def __init__(self, vocab_size, idx2token, token2idx, hidden_dim=512, lstm_layers=3, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
         super().__init__()
         self.vocab_size = vocab_size
         self.idx2token = idx2token
@@ -80,6 +80,7 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_gr
                   "Batch Loss: {:.4f}".format(loss.item())
                   )
 
+
         # Every Epoch, check loss on entire validation set:
         print("Calculating Validation Set Loss...")
         val_hidden = None
@@ -102,11 +103,12 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_gr
         val_loss_mean = sum(val_losses) / len(val_losses)
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
 
-        text = sample(model, response_length=100, prime='Genesis', top_k=None)
-        print(f"100 Char Sample: {text}")
+        text = sample(model, stop_char='\n', prime='Genesis\t', top_k=None)
+        print(f"Output Sample: {text}")
         model.train()
 
-        filepath = os.path.join('checkpoints', f'epoch_{e+1}.net')
+        loss_str= "{:.4f}".format(val_loss_mean).replace(".", "-")
+        filepath = os.path.join('checkpoints', f'epoch_{e+1}_{loss_str}.net')
         print(f"Saving Checkpoint: {filepath}")
         save_rnn_model(model, optimizer, filepath)
     print("Training Complete.")
@@ -201,7 +203,7 @@ def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, 
 # hyperparameters
 batch_size = 100
 seq_len = 100
-epochs = 10
+epochs = 30
 validation_p = 0.1
 use_gpu = False # TODO: check via code
 
@@ -225,7 +227,7 @@ print('\ntruncated y =\n', y[:10, :10])
 
 
 criterion = nn.CrossEntropyLoss()
-retrain = False
+retrain = True
 if retrain:
     model = CharRNN(vocab_size=vocab_size, idx2token=idx2token, token2idx=token2idx)
     optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
