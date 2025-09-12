@@ -150,6 +150,11 @@ def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     logits, hidden = model(torch.tensor([[token_idx]]), hidden)
     logits = logits[:, -1, :] / max(temperature, 1e-8)
 
+    if top_k is not None and 0 < top_k < logits.size(-1):
+        vals, idxs = torch.topk(logits, k=top_k, dim=-1)   # (1,k)
+        mask = torch.full_like(logits, float('-inf'))
+        mask.scatter_(1, idxs, vals)
+        logits = mask
     probs = F.softmax(logits, dim=1)
     # if gpu:
         # probs = probs.cpu()
@@ -165,7 +170,7 @@ def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     next_idx = torch.multinomial(probs, num_samples=1).item()
     return next_idx, hidden
 
-def sample(model, response_length, prime='\n', top_k=None, temperature=1.0):
+def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, temperature=1.0):
     # model.cuda()
     model.cpu()
     model.eval()
@@ -177,10 +182,17 @@ def sample(model, response_length, prime='\n', top_k=None, temperature=1.0):
 
     # Start generating response:
     response_indices = [next_idx]
-    for _ in range(response_length):
-        last_idx = response_indices[-1]
-        next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
-        response_indices.append(next_idx)
+    if stop_char:
+        while response_indices[-1] != model.token2idx[stop_char] and len(response_indices) < 500:
+            last_idx = response_indices[-1]
+            next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
+            response_indices.append(next_idx)
+    else:
+        assert response_length is not None
+        for _ in range(response_length):
+            last_idx = response_indices[-1]
+            next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
+            response_indices.append(next_idx)
 
     return ''.join([model.idx2token[idx] for idx in response_indices])
 
@@ -222,10 +234,12 @@ if retrain:
 else:
     filepath = os.path.join('checkpoints', 'epoch_10.net')
     model, optimizer = load_rnn_model(filepath)
+    print(f"\nModel: {model}")
 
-    text = sample(model, response_length=100, prime='Genesis', top_k=None)
-    print(f"100 Char Sample: {text}")
+    text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.6)
+    print(f"\nGenesis\t{text}")
+    text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.75)
+    print(f"Genesis\t{text}")
 
     #optimizer.lr = 0.0005
     #train(model, optimizer, criterion, train_loader, val_loader, epochs, use_gpu=False)
-    print(f"Model: {model}")
