@@ -108,7 +108,7 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         print(f"Output Sample: {text}")
         model.train()
 
-        filepath = os.path.join('__checkpoints', f'epoch_{e+11}.net')
+        filepath = os.path.join('__checkpoints', f'epoch_{e+1}.net')
         print(f"Saving Checkpoint: {filepath}")
         save_rnn_model(model, optimizer, filepath, epoch_losses, val_losses)
     print("Training Complete.")
@@ -225,6 +225,9 @@ def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, 
 
     return ''.join([model.idx2token[idx] for idx in response_indices])
 
+'''
+# Train
+
 
 
 # parameters ----------------------------------------------
@@ -292,9 +295,9 @@ else:
     print(f"\n{text}")
     text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
     print(f"\n{text}")
-    #text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.7)
-    #print(f"Genesis\t{text}")
 
     optimizer.lr = 0.00025
     model.lr = 0.00025
     train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each, clip_grad, use_gpu)
+
+'''
