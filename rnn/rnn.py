@@ -1,4 +1,5 @@
 import os
+import json
 import torch
 import numpy as np
 from torch import nn
@@ -44,23 +45,22 @@ class CharRNN(nn.Module):
         c = torch.zeros(self.lstm_layers, batch_size, self.hidden_dim, device=device)
         return (h, c)
 
-def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_grad=5, use_gpu=False):
-    os.makedirs('checkpoints', exist_ok=True)
+def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each='epoch', clip_grad=5, use_gpu=False):
+    os.makedirs('__checkpoints', exist_ok=True)
     model.train()
     if use_gpu:
         model.cuda()
 
     for e in range(epochs):
-        # TODO: not sure about resetting only once per epoch
         hidden = None
         batch_number = 0
+        epoch_losses = []
         for inputs, targets in train_loader:
             #print(f"Inputs.shape: {inputs.shape} || Targets.shape: {targets.shape}")
             batch_number += 1
             model.zero_grad()
-            if hidden == None:
+            if hidden == None or reset_each=='batch':
                 hidden = model.init_hidden(inputs.shape[0])
-            #hidden = model.init_hidden(inputs.shape[0])
             h, c = hidden
             hidden = (h.detach(), c.detach())
             logits, hidden = model(inputs, hidden)
@@ -71,6 +71,7 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_gr
             #print(f"Flattened logits.shape: {flattened_logits.shape}")
             #print(f"Flattened targets.shape: {flattened_targets.shape}")
             loss = criterion(flattened_logits, flattened_targets)
+            epoch_losses.append(loss.item())
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
             optimizer.step()
@@ -103,17 +104,16 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, clip_gr
         val_loss_mean = sum(val_losses) / len(val_losses)
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
 
-        text = sample(model, stop_char='\n', prime='Genesis\t', top_k=None)
+        text = sample(model, stop_char='\n', prime='\t', top_k=None)
         print(f"Output Sample: {text}")
         model.train()
 
-        loss_str= "{:.4f}".format(val_loss_mean).replace(".", "-")
-        filepath = os.path.join('checkpoints', f'epoch_{e+1}_{loss_str}.net')
+        filepath = os.path.join('__checkpoints', f'epoch_{e+11}.net')
         print(f"Saving Checkpoint: {filepath}")
-        save_rnn_model(model, optimizer, filepath)
+        save_rnn_model(model, optimizer, filepath, epoch_losses, val_losses)
     print("Training Complete.")
 
-def save_rnn_model(model, optimizer, filepath):
+def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
     torch.save({
         'vocab_size': model.vocab_size,
         'idx2token': model.idx2token,
@@ -126,6 +126,33 @@ def save_rnn_model(model, optimizer, filepath):
         'state_dict': model.state_dict(),
         'optimizer_state': optimizer.state_dict()
         }, filepath)
+
+    # metadata
+    base, _ = os.path.splitext(filepath)
+    meta_path = base + ".meta"
+    metadata = {
+        'hidden_dim': model.hidden_dim,
+        'lstm_layers': model.lstm_layers,
+        'lstm_dropout': model.lstm_dropout,
+        'fc_dropout': model.fc_dropout,
+        'lr': optimizer.lr,
+        # These should inherit from the global definitions
+        'batch_size': batch_size,
+        'seq_len': seq_len,
+        'validation_p': validation_p,
+        'shuffle': shuffle,
+        'include_book': include_book,
+        'reset_each': reset_each,
+        'clip_grad': clip_grad,
+        'epochs': epochs,
+        'use_gpu': use_gpu,
+        # Training Summary:
+        'batches_trained': len(epoch_losses),
+        'epoch_losses': epoch_losses,
+        'val_loss': sum(val_losses) / len(val_losses),
+    }
+    with open(meta_path, "w") as f:
+        json.dump(metadata, f, indent=4)
 
 def load_rnn_model(filepath, optimizer=None):
     checkpoint = torch.load(filepath, map_location="cpu")
@@ -200,20 +227,38 @@ def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, 
 
 
 
-# hyperparameters
-batch_size = 100
+# parameters ----------------------------------------------
+# model:
+hidden_dim = 512
+lstm_layers = 3
+lstm_dropout = 0.5
+fc_dropout = 0.5
+lr = 0.001
+
+# batching:
+batch_size = 50
 seq_len = 100
-epochs = 30
 validation_p = 0.1
+include_book=False
+shuffle = True
+
+# training:
+reset_each = 'batch' # epoch
+clip_grad=5
+epochs = 20
 use_gpu = False # TODO: check via code
 
-df, full_text_str = utils.preprocess_akjv()
+
+
+# chunk data into batches ----------------------------------------------------------
+df, full_text_str = utils.preprocess_akjv(include_book)
 vocab, vocab_size, idx2token, token2idx, encoded_text_arr = utils.tokenize_str(full_text_str)
 train_loader, val_loader = utils.make_dataloader(encoded_text_arr,
-                                           batch_size=batch_size,
-                                           seq_len=seq_len,
-                                           validation_p=validation_p,
-                                           style='RNN')
+                                                 batch_size=batch_size,
+                                                 seq_len=seq_len,
+                                                 validation_p=validation_p,
+                                                 shuffle=shuffle,
+                                                 style='RNN')
 
 x, y = next(iter(train_loader))
 print('')
@@ -227,21 +272,29 @@ print('\ntruncated y =\n', y[:10, :10])
 
 
 criterion = nn.CrossEntropyLoss()
-retrain = True
+retrain = False
 if retrain:
-    model = CharRNN(vocab_size=vocab_size, idx2token=idx2token, token2idx=token2idx)
+    model = CharRNN(vocab_size, idx2token, token2idx,
+                    hidden_dim, lstm_layers,
+                    lstm_dropout, fc_dropout, lr)
     optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
     print(f"Model: {model}")
-    train(model, optimizer, criterion, train_loader, val_loader, epochs, use_gpu=False)
+    train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each, clip_grad, use_gpu)
 else:
-    filepath = os.path.join('checkpoints', 'epoch_10.net')
+    filepath = os.path.join('__checkpoints', 'epoch_30.net')
     model, optimizer = load_rnn_model(filepath)
     print(f"\nModel: {model}")
 
-    text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.6)
-    print(f"\nGenesis\t{text}")
-    text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.75)
-    print(f"Genesis\t{text}")
+    #text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.65)
+    text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    print(f"\n{text}")
+    text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    print(f"\n{text}")
+    text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    print(f"\n{text}")
+    #text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.7)
+    #print(f"Genesis\t{text}")
 
-    #optimizer.lr = 0.0005
-    #train(model, optimizer, criterion, train_loader, val_loader, epochs, use_gpu=False)
+    optimizer.lr = 0.00025
+    model.lr = 0.00025
+    train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each, clip_grad, use_gpu)

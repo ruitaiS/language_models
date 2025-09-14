@@ -20,7 +20,7 @@ def tokenize_str(full_text_str, tokenization='char'):
     print(f"Vocabulary Size: {vocab_size}")
     return vocab, vocab_size, idx2token, token2idx, encoded_text_arr
 
-def preprocess_akjv():
+def preprocess_akjv(include_book=True):
     # each source file gets its own preprocess function
     # passed as preprocess_text() param for TextDataset
     # returns df, full_text_str, encoded_text_arr, vocab, vocab_size, idx2token, token2idx
@@ -35,8 +35,12 @@ def preprocess_akjv():
         expand=True
     )
     df = df.dropna().reset_index(drop=True)
-    full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
-    full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
+    if include_book:
+        full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
+        full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
+    else:
+        full_text_str = "\n".join("\t" + s for s in df["text"].astype(str))
+        full_text_str = full_text_str + '\n'
     return df, full_text_str
 
 class RnnDataset(Dataset):
@@ -67,6 +71,7 @@ class RnnDataset(Dataset):
 def make_dataloader(encoded_text_arr,
                     batch_size, seq_len,
                     validation_p,
+                    shuffle=False,
                     style='RNN'):
     print(f"Batch Size: {batch_size}")
     print(f"Sequence Length: {seq_len}")
@@ -83,7 +88,7 @@ def make_dataloader(encoded_text_arr,
         train_loader = torch.utils.data.DataLoader(
                 RnnDataset(encoded_text_arr[:split_idx+1], seq_len),
                 batch_size=batch_size,
-                shuffle=False,
+                shuffle=shuffle,
                 drop_last=True)
         print(f"Train Loader Size: {len(train_loader)}")
         assert len(train_loader) == split_idx // (batch_size * seq_len)
@@ -91,7 +96,7 @@ def make_dataloader(encoded_text_arr,
         val_loader = torch.utils.data.DataLoader(
                 RnnDataset(encoded_text_arr[split_idx:], seq_len),
                 batch_size=batch_size,
-                shuffle=False,
+                shuffle=shuffle,
                 drop_last=True)
         print(f"Validation Loader Size: {len(val_loader)}")
         assert len(val_loader) >= 0
