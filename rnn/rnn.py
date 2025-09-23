@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import torch
 import numpy as np
@@ -8,34 +9,36 @@ import torch.nn.functional as F
 import utils
 
 class CharRNN(nn.Module):
-    def __init__(self, vocab_size, idx2token, token2idx, hidden_dim=512, lstm_layers=3, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
+    def __init__(self, vocab_size, idx2token, token2idx, embedding_dim=32, hidden_dim=512, lstm_layers=3, embedding_dropout=0.3, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
         super().__init__()
         self.vocab_size = vocab_size
         self.idx2token = idx2token
         self.token2idx = token2idx
-        self.hidden_dim =hidden_dim
+
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
         self.lstm_layers =lstm_layers
+
+        self.embedding_dropout = embedding_dropout
         self.lstm_dropout =lstm_dropout
         self.fc_dropout = fc_dropout
         self.lr = lr
 
-        self.lstm = nn.LSTM(vocab_size, hidden_dim, lstm_layers,
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.dropout1 = nn.Dropout(p=embedding_dropout)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, lstm_layers,
                              dropout=lstm_dropout, batch_first=True)
-        self.final_dropout = nn.Dropout(p=fc_dropout)
+        self.dropout2 = nn.Dropout(p=fc_dropout)
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x, hidden):
-        x = F.one_hot(x, num_classes=self.vocab_size).float()
-        h, c = hidden
-        #print(f"Input x.shape: {x.shape} || h.shape: {h.shape} || cell c.shape: {c.shape}")
-        #print(f"One-hot Encoded x.shape: {x.shape}")
-        output, (h, c) = self.lstm(x, hidden)
-        #print(f"output.shape: {output.shape} || output h.shape: {h.shape} || output c.shape: {c.shape}")
-
-        output = self.final_dropout(output)
+        #x = F.one_hot(x, num_classes=self.vocab_size).float()
+        x = self.embedding(x)
+        x = self.dropout1(x)
+        output, hidden = self.lstm(x, hidden)
+        output = self.dropout2(output)
         logits = self.fc(output)
-        #print(f"Final logits.shape: {logits.shape}")
-        return logits, (h, c)
+        return logits, hidden
 
     def init_hidden(self, batch_size):
         #if device is None:
@@ -45,8 +48,11 @@ class CharRNN(nn.Module):
         c = torch.zeros(self.lstm_layers, batch_size, self.hidden_dim, device=device)
         return (h, c)
 
-def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each='epoch', clip_grad=5, use_gpu=False):
+def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each='epoch', clip_grad=5, use_gpu=False, resume_from=0):
     os.makedirs('__checkpoints', exist_ok=True)
+    if resume_from==0 and os.listdir('__checkpoints'):
+        sys.exit(f"Error: {checkpoint_dir} is not empty.")
+
     model.train()
     if use_gpu:
         model.cuda()
@@ -76,7 +82,7 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
             nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
             optimizer.step()
 
-            print("Epoch: {}/{} ||".format(e+1, epochs),
+            print("Epoch: {}/{} ||".format(resume_from+e+1, resume_from+epochs),
                   "Batch Number: {}/{} ||".format(batch_number, len(train_loader)),
                   "Batch Loss: {:.4f}".format(loss.item())
                   )
@@ -108,7 +114,7 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         print(f"Output Sample: {text}")
         model.train()
 
-        filepath = os.path.join('__checkpoints', f'epoch_{e+1}.net')
+        filepath = os.path.join('__checkpoints', f'epoch_{resume_from+e+1}.net')
         print(f"Saving Checkpoint: {filepath}")
         save_rnn_model(model, optimizer, filepath, epoch_losses, val_losses)
     print("Training Complete.")
@@ -118,11 +124,13 @@ def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
         'vocab_size': model.vocab_size,
         'idx2token': model.idx2token,
         'token2idx': model.token2idx,
+        'embedding_dim': model.embedding_dim,
         'hidden_dim': model.hidden_dim,
         'lstm_layers': model.lstm_layers,
+        'embedding_dropout': model.embedding_dropout,
         'lstm_dropout': model.lstm_dropout,
         'fc_dropout': model.fc_dropout,
-        'lr': model.lr,
+        'lr': optimizer.param_groups[0]['lr'],
         'state_dict': model.state_dict(),
         'optimizer_state': optimizer.state_dict()
         }, filepath)
@@ -131,21 +139,6 @@ def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
     base, _ = os.path.splitext(filepath)
     meta_path = base + ".meta"
     metadata = {
-        'hidden_dim': model.hidden_dim,
-        'lstm_layers': model.lstm_layers,
-        'lstm_dropout': model.lstm_dropout,
-        'fc_dropout': model.fc_dropout,
-        'lr': optimizer.lr,
-        # These should inherit from the global definitions
-        'batch_size': batch_size,
-        'seq_len': seq_len,
-        'validation_p': validation_p,
-        'shuffle': shuffle,
-        'include_book': include_book,
-        'reset_each': reset_each,
-        'clip_grad': clip_grad,
-        'epochs': epochs,
-        'use_gpu': use_gpu,
         # Training Summary:
         'batches_trained': len(epoch_losses),
         'epoch_losses': epoch_losses,
@@ -160,8 +153,10 @@ def load_rnn_model(filepath, optimizer=None):
         vocab_size=checkpoint['vocab_size'],
         idx2token=checkpoint['idx2token'],
         token2idx=checkpoint['token2idx'],
+        embedding_dim=checkpoint['embedding_dim'],
         hidden_dim=checkpoint['hidden_dim'],
         lstm_layers=checkpoint['lstm_layers'],
+        embedding_dropout=checkpoint['embedding_dropout'],
         lstm_dropout=checkpoint['lstm_dropout'],
         fc_dropout=checkpoint['fc_dropout'],
         lr=checkpoint['lr']
