@@ -25,8 +25,8 @@ shuffle = True
 # training:
 reset_each = 'batch' # epoch
 clip_grad=5
-epochs = 18 
-resume_from = 2
+epochs = 30
+resume_from = 20
 use_gpu = False # TODO: check via code
 
 # chunk data into batches ----------------------------------------------------------

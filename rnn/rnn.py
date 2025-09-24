@@ -24,17 +24,26 @@ class CharRNN(nn.Module):
         self.fc_dropout = fc_dropout
         self.lr = lr
 
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.dropout1 = nn.Dropout(p=embedding_dropout)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, lstm_layers,
-                             dropout=lstm_dropout, batch_first=True)
+        if embedding_dim > 0:
+            self.embedding = nn.Embedding(vocab_size, embedding_dim)
+            self.dropout1 = nn.Dropout(p=embedding_dropout)
+            self.lstm = nn.LSTM(embedding_dim, hidden_dim, lstm_layers,
+                                 dropout=lstm_dropout, batch_first=True)
+        else:
+            self.embedding = None
+            self.dropout1 = None
+            self.lstm = nn.LSTM(vocab_size, hidden_dim, lstm_layers,
+                                 dropout=lstm_dropout, batch_first=True)
+
         self.dropout2 = nn.Dropout(p=fc_dropout)
         self.fc = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x, hidden):
-        #x = F.one_hot(x, num_classes=self.vocab_size).float()
-        x = self.embedding(x)
-        x = self.dropout1(x)
+        if self.embedding_dim > 0:
+            x = self.embedding(x)
+            x = self.dropout1(x)
+        else:
+            x = F.one_hot(x, num_classes=self.vocab_size).float()
         output, hidden = self.lstm(x, hidden)
         output = self.dropout2(output)
         logits = self.fc(output)
@@ -153,10 +162,10 @@ def load_rnn_model(filepath, optimizer=None):
         vocab_size=checkpoint['vocab_size'],
         idx2token=checkpoint['idx2token'],
         token2idx=checkpoint['token2idx'],
-        embedding_dim=checkpoint['embedding_dim'],
+        embedding_dim=checkpoint.get('embedding_dim', 0),
         hidden_dim=checkpoint['hidden_dim'],
         lstm_layers=checkpoint['lstm_layers'],
-        embedding_dropout=checkpoint['embedding_dropout'],
+        embedding_dropout=checkpoint.get('embedding_dropout', 0),
         lstm_dropout=checkpoint['lstm_dropout'],
         fc_dropout=checkpoint['fc_dropout'],
         lr=checkpoint['lr']
