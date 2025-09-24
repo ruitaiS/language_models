@@ -5,7 +5,7 @@ from rnn import load_rnn_model, sample
 if len(sys.argv) > 1:
     model_version = sys.argv[1]
 else:
-    model_version = 'v6'
+    model_version = 'v7'
 
 files = [f for f in os.listdir(os.path.join('models', model_version))
          if f.startswith("epoch_") and f.endswith(".net")]
