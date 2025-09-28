@@ -9,7 +9,7 @@ if len(sys.argv) == 2:
     user_input = sys.argv[1]
 else:
     user_input = 'v6'
-path = os.path.join('models', user_input)
+path = os.path.join('models', user_input, 'training_metadata')
 
 df_rows = []
 for filename in os.listdir(path):
@@ -33,7 +33,7 @@ for filename in os.listdir(path):
                 })
 
 if len(df_rows) == 0:
-    print(f"No metadata found in models/{user_input}")
+    print(f"No metadata found in models/{user_input}/training_metadata")
 else:
 
     df = pd.DataFrame(df_rows)

@@ -5,18 +5,35 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 import os
 import pandas as pd
+from nltk.tokenize import RegexpTokenizer
 
 def tokenize_str(full_text_str, tokenization='char'):
-    # Room to implement different tokenization methods
-    # Note for character level tokenization, `\n` counts as one character
-    # and forms a natural "end of line" character!
-    # `\t` likewise counts as one character,
-    # and forms a natural 'book' vs. 'text' delineator in the akjv.txt corpus
-    vocab = sorted(tuple(set(full_text_str)))
-    vocab_size = len(vocab)
-    idx2token = dict(enumerate(vocab))
-    token2idx = {ch:ii for ii, ch in idx2token.items()}
-    encoded_text_arr = np.array([token2idx[ch] for ch in full_text_str])
+    assert tokenization in ('char', 'word'), (
+    f"tokenization must be 'word' or 'char', got {tokenization}"
+    )
+    if tokenization=='char':
+        # Note for character level tokenization, `\n` counts as one character
+        # and forms a natural "end of line" character!
+        # `\t` likewise counts as one character,
+        # and forms a natural 'book' vs. 'text' delineator in the akjv.txt corpus
+        vocab = sorted(tuple(set(full_text_str)))
+        vocab_size = len(vocab)
+        idx2token = dict(enumerate(vocab))
+        token2idx = {ch:ii for ii, ch in idx2token.items()}
+        encoded_text_arr = np.array([token2idx[ch] for ch in full_text_str], dtype=np.int32)
+    else:
+        full_text_str = "<s> " + full_text_str.replace("\n", " </s> <s> ")
+        cut_chars = len(" <s> ")
+        print(f"Cutting Before Tokenizing: {full_text_str[-cut_chars:]!r}")
+        full_text_str = full_text_str[:-len(" <s> ")]
+        #tokenizer = RegexpTokenizer(r"<[^>\s]+>|\w+|[^\w\s]")
+        tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
+        words = tokenizer.tokenize(full_text_str)
+        vocab = sorted(set(words))
+        vocab_size = len(vocab)
+        idx2token = dict(enumerate(vocab))
+        token2idx = {word:i for i, word in idx2token.items()}
+        encoded_text_arr = np.array([token2idx[word] for word in words], dtype=np.int32)
     print(f"Vocabulary Size: {vocab_size}")
     return vocab, vocab_size, idx2token, token2idx, encoded_text_arr
 
@@ -36,11 +53,12 @@ def preprocess_akjv(include_book=True):
     )
     df = df.dropna().reset_index(drop=True)
     if include_book:
-        full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
-        full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
+        #full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
+        lines = "<" + df["book"].astype(str) + ">"  + "\t" + df["text"].astype(str)
+        full_text_str = "\n".join(lines)
     else:
         full_text_str = "\n".join("\t" + s for s in df["text"].astype(str))
-        full_text_str = full_text_str + '\n'
+    full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
     return df, full_text_str
 
 class RnnDataset(Dataset):

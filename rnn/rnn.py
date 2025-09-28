@@ -59,7 +59,8 @@ class CharRNN(nn.Module):
 
 def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each='epoch', clip_grad=5, use_gpu=False, resume_from=0):
     os.makedirs('__checkpoints', exist_ok=True)
-    if resume_from==0 and os.listdir('__checkpoints'):
+    files = [f for f in os.listdir('__checkpoints') if not f.endswith('.params')]
+    if resume_from==0 and files:
         sys.exit(f"Error: {checkpoint_dir} is not empty.")
 
     model.train()
@@ -145,15 +146,17 @@ def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
         }, filepath)
 
     # metadata
-    base, _ = os.path.splitext(filepath)
-    meta_path = base + ".meta"
+    path, filename = os.path.split(filepath)
+    base, _ = os.path.splitext(filename)
+    meta_filename = base + ".meta"
     metadata = {
         # Training Summary:
         'batches_trained': len(epoch_losses),
         'epoch_losses': epoch_losses,
         'val_loss': sum(val_losses) / len(val_losses),
     }
-    with open(meta_path, "w") as f:
+    os.makedirs(os.path.join(path, 'training_metadata'), exist_ok=True)
+    with open(os.path.join(path, 'training_metadata', meta_filename), "w") as f:
         json.dump(metadata, f, indent=4)
 
 def load_rnn_model(filepath, optimizer=None):

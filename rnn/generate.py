@@ -1,21 +1,23 @@
 import os
 import sys
+import argparse
 from rnn import load_rnn_model, sample
 
-if len(sys.argv) > 1:
-    model_version = sys.argv[1]
-else:
-    model_version = 'v7'
+parser = argparse.ArgumentParser(description="Generate Text from RNN Model")
+parser.add_argument('-v', '--version', type=int, required=False, help='Model Version')
+parser.add_argument('-e', '--epoch', type=int, required=False, help='Epoch Number')
+parser.add_argument('-b', '--book', type=str, required=False, help='Book Name')
+args = parser.parse_args()
 
+model_version = 'v' + str(args.version) if args.version is not None else 'v7'
 files = [f for f in os.listdir(os.path.join('models', model_version))
          if f.startswith("epoch_") and f.endswith(".net")]
 if not files:
     raise FileNotFoundError(f"No model files found in {model_version}")
 
 latest_epoch = int(max(files, key=lambda f: int(f[6:-4]))[6:-4])
-model_filename = f"epoch_{latest_epoch}.net"
-if len(sys.argv) > 2:
-    model_filename = f"epoch_{int(sys.argv[2])}.net"
+model_epoch = int(args.epoch) if args.epoch is not None else latest_epoch
+model_filename = f"epoch_{model_epoch}.net"
 
 #---------------------------------------------------------------------------
 
@@ -28,12 +30,23 @@ except FileNotFoundError as e:
         print(files)
         sys.exit(1)
 
-print(f"Loading model {model_version} epoch {int(model_filename[6:-4])}")
+print(f"Loaded model {model_version} epoch {int(model_filename[6:-4])}")
 print(f"\nModel: {model}")
 
-text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+'''
+# for include_book == true models
+# probably unnecessarily complex for now just update manually
+params = [f for f in os.listdir(os.path.join('models', model_version))
+         if f.startswith("epochs_") and f.endswith(".params")]
+'''
+prime='\t'
+book_included_models = ['v8']
+if model_version in book_included_models and args.book is not None:
+    prime = f'<{str(args.book)}>\t'
+
+text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', prime='\t', temperature=1.0)
+text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
 print(f"\n{text}")
