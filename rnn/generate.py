@@ -42,11 +42,19 @@ params = [f for f in os.listdir(os.path.join('models', model_version))
 prime='\t'
 book_included_models = ['v8']
 if model_version in book_included_models and args.book is not None:
+    print(f"Book: {args.book}")
     prime = f'<{str(args.book)}>\t'
 
-text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
+tokenization='char'
+word_tokenized_models = ['']
+if model_version in word_tokenized_models:
+    tokenization='word'
+
+print(f"Tokenization: {tokenization}")
+
+text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
+text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', prime=prime, temperature=1.0)
+text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
 print(f"\n{text}")

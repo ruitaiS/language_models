@@ -21,6 +21,7 @@ def process_csv(filepath, dType=None):
 def get_lookups():
   # These abbreviations are confusing and retarded (Well too bad)
   # tfx >> token from index ; xft >> index from token
+  # TODO: Change tfx >> idx2token, xft >> token2idx
   tfx = process_csv(os.path.join(base_path, 'text/b0_vocab.txt'))
   tfx = {a[0]:b for a, b in tfx.items()} # TODO: This might be unnecessary; is a one element tuple real
   xft = {b:a for a, b in tfx.items()}

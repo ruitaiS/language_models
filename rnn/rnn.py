@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
+from nltk.tokenize import RegexpTokenizer
 
 import utils
 
@@ -59,9 +60,10 @@ class CharRNN(nn.Module):
 
 def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_each='epoch', clip_grad=5, use_gpu=False, resume_from=0):
     os.makedirs('__checkpoints', exist_ok=True)
-    files = [f for f in os.listdir('__checkpoints') if not f.endswith('.params')]
+    files = [f for f in os.listdir('__checkpoints')
+             if os.path.isfile(os.path.join('__checkpoints', f)) and not f.endswith('.params')]
     if resume_from==0 and files:
-        sys.exit(f"Error: {checkpoint_dir} is not empty.")
+        sys.exit(f"Error: __checkpoints is not empty.")
 
     model.train()
     if use_gpu:
@@ -206,11 +208,21 @@ def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     next_idx = torch.multinomial(probs, num_samples=1).item()
     return next_idx, hidden
 
-def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, temperature=1.0):
+def sample(model, stop_char='\n', response_length=None, tokenization='char', prime='\n', top_k=None, temperature=1.0):
+    assert tokenization in ('char', 'word'), (
+    f"tokenization must be 'word' or 'char', got {tokenization}")
+
     # model.cuda()
     model.cpu()
     model.eval()
-    priming_indices = [model.token2idx[char] for char in prime]
+    if tokenization == 'char':
+        priming_indices = [model.token2idx[char] for char in prime] 
+    else:
+        #tokenizer = RegexpTokenizer(r"<[^>\s]+>|\w+|[^\w\s]")
+        tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
+        words = tokenizer.tokenize(prime)
+        priming_indices = [model.token2idx.get(word, model.token2idx['<?>']) for word in words]
+    print(f"Priming Tokens: {[model.idx2token[idx] for idx in priming_indices]}")
     hidden = model.init_hidden(batch_size = 1)
     # Iterate over priming chars to build up hidden state
     for token_idx in priming_indices:

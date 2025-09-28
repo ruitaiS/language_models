@@ -7,10 +7,9 @@ import os
 import pandas as pd
 from nltk.tokenize import RegexpTokenizer
 
-def tokenize_str(full_text_str, tokenization='char'):
+def tokenize(df, full_text_str, tokenization='char'):
     assert tokenization in ('char', 'word'), (
-    f"tokenization must be 'word' or 'char', got {tokenization}"
-    )
+    f"tokenization must be 'word' or 'char', got {tokenization}")
     if tokenization=='char':
         # Note for character level tokenization, `\n` counts as one character
         # and forms a natural "end of line" character!
@@ -20,7 +19,11 @@ def tokenize_str(full_text_str, tokenization='char'):
         vocab_size = len(vocab)
         idx2token = dict(enumerate(vocab))
         token2idx = {ch:ii for ii, ch in idx2token.items()}
-        encoded_text_arr = np.array([token2idx[ch] for ch in full_text_str], dtype=np.int32)
+        encoded_text = np.array([token2idx[ch] for ch in full_text_str], dtype=np.int32)
+        encoded_lines = [
+                [token2idx[ch] for ch in text]
+                for text in df['text']
+                ]
     else:
         full_text_str = "<s> " + full_text_str.replace("\n", " </s> <s> ")
         cut_chars = len(" <s> ")
@@ -30,17 +33,19 @@ def tokenize_str(full_text_str, tokenization='char'):
         tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         words = tokenizer.tokenize(full_text_str)
         vocab = sorted(set(words))
+        vocab.insert(0, '<?>')
         vocab_size = len(vocab)
         idx2token = dict(enumerate(vocab))
         token2idx = {word:i for i, word in idx2token.items()}
-        encoded_text_arr = np.array([token2idx[word] for word in words], dtype=np.int32)
+        encoded_text = np.array([token2idx[word] for word in words], dtype=np.int32)
+        encoded_lines = [
+                [token2idx[token] for token in tokenizer.tokenize(text)]
+                for text in df['text']
+                ]
     print(f"Vocabulary Size: {vocab_size}")
-    return vocab, vocab_size, idx2token, token2idx, encoded_text_arr
+    return vocab, vocab_size, idx2token, token2idx, encoded_text, encoded_lines
 
 def preprocess_akjv(include_book=True):
-    # each source file gets its own preprocess function
-    # passed as preprocess_text() param for TextDataset
-    # returns df, full_text_str, encoded_text_arr, vocab, vocab_size, idx2token, token2idx
     source_filepath = os.path.join('..', 'datasets', 'akjv.txt')
     # utf-8-sig strips leading BOM char
     with open(source_filepath, encoding="utf-8-sig") as f:
@@ -86,25 +91,28 @@ class RnnDataset(Dataset):
     def __len__(self):
         return self.len
 
-def make_dataloader(encoded_text_arr,
+def make_dataloader(encoded_arr,
                     batch_size, seq_len,
                     validation_p,
                     shuffle=False,
-                    style='RNN'):
+                    style='encoded_text'):
     print(f"Batch Size: {batch_size}")
     print(f"Sequence Length: {seq_len}")
     print(f"Validation Proportion: {validation_p}")
-    print(f"Encoded Length: {len(encoded_text_arr)}")
+    print(f"Encoded Length: {len(encoded_arr)}")
 
-    if style == 'RNN':
+    assert style in ('encoded_text', 'encoded_lines'), (
+            f'style must be "encoded_text" or "encoded_lines"')
+
+    if style == 'encoded_text':
         # train/val split at closest batch_size * seq_len to validation_p
         # feels wrong to have validation set be an unshuffled chunk, but ok
-        split_idx = (int)((len(encoded_text_arr) * (1-validation_p))//(batch_size*seq_len))*(batch_size*seq_len)
+        split_idx = (int)((len(encoded_arr) * (1-validation_p))//(batch_size*seq_len))*(batch_size*seq_len)
         print(f"Split Index: {split_idx}")
-        assert split_idx + 1 != len(encoded_text_arr)
+        assert split_idx + 1 != len(encoded_arr)
 
         train_loader = torch.utils.data.DataLoader(
-                RnnDataset(encoded_text_arr[:split_idx+1], seq_len),
+                RnnDataset(encoded_arr[:split_idx+1], seq_len),
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=True)
@@ -112,7 +120,7 @@ def make_dataloader(encoded_text_arr,
         assert len(train_loader) == split_idx // (batch_size * seq_len)
 
         val_loader = torch.utils.data.DataLoader(
-                RnnDataset(encoded_text_arr[split_idx:], seq_len),
+                RnnDataset(encoded_arr[split_idx:], seq_len),
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=True)
@@ -120,9 +128,5 @@ def make_dataloader(encoded_text_arr,
         assert len(val_loader) >= 0
 
         return train_loader, val_loader
-    elif style == 'Transformer':
-        #shuffle = True
-        #drop_last = False # ? or True? idk
-        print("TODO")
     else:
-        raise ValueError(f"{style} is not a valid style value ('RNN' or 'Transformer')")
+        print("TODO")
