@@ -22,25 +22,30 @@ validation_p = 0.1
 tokenization='word'
 include_book=True
 shuffle = True
+style='encoded_text'
 
 # training:
 reset_each = 'batch' # epoch
 clip_grad=5
-epochs = 20
-resume_from = 0
-use_gpu = False # TODO: check via code
+epochs = 30
+resume_from = 20
+use_gpu = False
 
-# chunk data into batches ----------------------------------------------------------
 df, full_text_str = utils.preprocess_akjv(include_book)
 # Note vocab is built from entire text corpus (train/val data leakage)
 # For our purposes i think its ok
 vocab, vocab_size, idx2token, token2idx, encoded_text, encoded_lines = utils.tokenize(df, full_text_str, tokenization)
-train_loader, val_loader = utils.make_dataloader(encoded_text,
+
+if style=='encoded_text':
+    encoded_arr = encoded_text
+else:
+    encoded_arr = encoded_lines
+train_loader, val_loader = utils.make_dataloader(encoded_arr,
                                                  batch_size=batch_size,
                                                  seq_len=seq_len,
                                                  validation_p=validation_p,
                                                  shuffle=shuffle,
-                                                 style='encoded_text')
+                                                 style=style)
 
 x, y = next(iter(train_loader))
 print('')
@@ -56,6 +61,8 @@ print('\ntruncated y =\n', y[:10, :10])
 def save_params():
     # Saving Training Params:
     params = {
+            'pad_token': model.pad_token,
+            'pad_id': model.pad_id,
             'vocab_size': model.vocab_size,
             'tokenization': tokenization,
             'include_book': include_book,
@@ -84,7 +91,7 @@ def save_params():
 
 criterion = nn.CrossEntropyLoss()
 if resume_from == 0:
-    model = rnn.CharRNN(vocab_size, idx2token, token2idx,
+    model = rnn.CharRNN(tokenization, vocab_size, idx2token, token2idx, pad_token='<>',
                     embedding_dim, hidden_dim, lstm_layers,
                     embedding_dropout, lstm_dropout, fc_dropout, lr)
     optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
@@ -97,12 +104,20 @@ else:
     model, optimizer = rnn.load_rnn_model(filepath)
     print(f"\nModel: {model}")
 
+
+    if model.tokenization == 'char':
+        prime = '\t'
+        stop_char='\n'
+    else:
+        prime = '<tab>'
+        stop_char = '</s>'
+
     #text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.65)
-    text = rnn.sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
     print(f"\n{text}")
-    text = rnn.sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
     print(f"\n{text}")
-    text = rnn.sample(model, stop_char='\n', prime='\t', temperature=1.0)
+    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
     print(f"\n{text}")
 
     optimizer.lr = 0.00025

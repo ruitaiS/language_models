@@ -39,22 +39,26 @@ print(f"\nModel: {model}")
 params = [f for f in os.listdir(os.path.join('models', model_version))
          if f.startswith("epochs_") and f.endswith(".params")]
 '''
-prime='\t'
-book_included_models = ['v8']
+if model.tokenization == 'char':
+    prime = '\t'
+    stop_char='\n'
+else:
+    prime = '<tab>'
+    stop_char = '</s>'
+
+book_included_models = ['v8', 'v9']
 if model_version in book_included_models and args.book is not None:
     print(f"Book: {args.book}")
-    prime = f'<{str(args.book)}>\t'
+    if model.tokenization == 'char':
+        prime = f'<{str(args.book)}>\t'
+    else:
+        prime = f'<s> <{str(args.book)}> <tab>'
 
-tokenization='char'
-word_tokenized_models = ['']
-if model_version in word_tokenized_models:
-    tokenization='word'
+print(f"Tokenization: {model.tokenization}")
 
-print(f"Tokenization: {tokenization}")
-
-text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
+text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
+text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char='\n', tokenization=tokenization, prime=prime, temperature=1.0)
+text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
 print(f"\n{text}")

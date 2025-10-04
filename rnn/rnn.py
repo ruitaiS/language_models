@@ -10,11 +10,17 @@ from nltk.tokenize import RegexpTokenizer
 import utils
 
 class CharRNN(nn.Module):
-    def __init__(self, vocab_size, idx2token, token2idx, embedding_dim=32, hidden_dim=512, lstm_layers=3, embedding_dropout=0.3, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
+    def __init__(self, tokenization, vocab_size, idx2token, token2idx, pad_token='<>', embedding_dim=32, hidden_dim=512, lstm_layers=3, embedding_dropout=0.3, lstm_dropout=0.5, fc_dropout=0.5, lr=0.001):
         super().__init__()
+        assert tokenization in ('char', 'word'), (
+        f"tokenization must be 'word' or 'char', got {tokenization}")
+        self.tokenization = tokenization
         self.vocab_size = vocab_size
         self.idx2token = idx2token
         self.token2idx = token2idx
+        self.pad_token = pad_token
+        # earlier models (<9) don't have pad tokens in their vocab
+        self.pad_id = self.token2idx.get(pad_token, None)
 
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -122,7 +128,10 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         val_loss_mean = sum(val_losses) / len(val_losses)
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
 
-        text = sample(model, stop_char='\n', prime='\t', top_k=None)
+        if model.tokenization == 'char':
+            text = sample(model, stop_char='\n', prime='\t', top_k=None)
+        else:
+            text = sample(model, stop_char='</s>', prime='<tab>', top_k=None)
         print(f"Output Sample: {text}")
         model.train()
 
@@ -133,9 +142,12 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
 
 def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
     torch.save({
+        'tokenization': model.tokenization,
         'vocab_size': model.vocab_size,
         'idx2token': model.idx2token,
         'token2idx': model.token2idx,
+        'pad_token': model.pad_token,
+        'pad_id': model.pad_id,
         'embedding_dim': model.embedding_dim,
         'hidden_dim': model.hidden_dim,
         'lstm_layers': model.lstm_layers,
@@ -164,9 +176,11 @@ def save_rnn_model(model, optimizer, filepath, epoch_losses=[], val_losses=[]):
 def load_rnn_model(filepath, optimizer=None):
     checkpoint = torch.load(filepath, map_location="cpu")
     model = CharRNN(
+        tokenization=checkpoint.get('tokenization', 'char'),
         vocab_size=checkpoint['vocab_size'],
         idx2token=checkpoint['idx2token'],
         token2idx=checkpoint['token2idx'],
+        pad_token=checkpoint.get('pad_token', '<>'),
         embedding_dim=checkpoint.get('embedding_dim', 0),
         hidden_dim=checkpoint['hidden_dim'],
         lstm_layers=checkpoint['lstm_layers'],
@@ -208,17 +222,28 @@ def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     next_idx = torch.multinomial(probs, num_samples=1).item()
     return next_idx, hidden
 
-def sample(model, stop_char='\n', response_length=None, tokenization='char', prime='\n', top_k=None, temperature=1.0):
-    assert tokenization in ('char', 'word'), (
-    f"tokenization must be 'word' or 'char', got {tokenization}")
+def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, temperature=1.0):
 
     # model.cuda()
     model.cpu()
     model.eval()
-    if tokenization == 'char':
+    if model.tokenization == 'char':
+        delimiter = ''
+        idx2token = model.idx2token
         priming_indices = [model.token2idx[char] for char in prime] 
     else:
         #tokenizer = RegexpTokenizer(r"<[^>\s]+>|\w+|[^\w\s]")
+        delimiter = ' '
+        replacements = {
+                '<s>': '',
+                '</s>': '\n',
+                '<tab>': '    ',
+                # '<?>' just leave as-is
+                }
+        idx2token = {
+            idx: replacements.get(tok, tok)
+            for idx, tok in model.idx2token.items()
+        }
         tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         words = tokenizer.tokenize(prime)
         priming_indices = [model.token2idx.get(word, model.token2idx['<?>']) for word in words]
@@ -242,4 +267,4 @@ def sample(model, stop_char='\n', response_length=None, tokenization='char', pri
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
             response_indices.append(next_idx)
 
-    return ''.join([model.idx2token[idx] for idx in response_indices])
+    return delimiter.join([idx2token[idx] for idx in response_indices])

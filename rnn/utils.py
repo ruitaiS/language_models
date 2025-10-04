@@ -7,7 +7,7 @@ import os
 import pandas as pd
 from nltk.tokenize import RegexpTokenizer
 
-def tokenize(df, full_text_str, tokenization='char'):
+def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
     assert tokenization in ('char', 'word'), (
     f"tokenization must be 'word' or 'char', got {tokenization}")
     if tokenization=='char':
@@ -15,10 +15,13 @@ def tokenize(df, full_text_str, tokenization='char'):
         # and forms a natural "end of line" character!
         # `\t` likewise counts as one character,
         # and forms a natural 'book' vs. 'text' delineator in the akjv.txt corpus
-        vocab = sorted(tuple(set(full_text_str)))
+        #idx2token = dict(enumerate(vocab))
+        #token2idx = {ch:ii for ii, ch in idx2token.items()}
+        print("Char Tokenizaiton")
+        vocab = [pad_token] + sorted(tuple(set(full_text_str)))
         vocab_size = len(vocab)
-        idx2token = dict(enumerate(vocab))
-        token2idx = {ch:ii for ii, ch in idx2token.items()}
+        idx2token =  vocab
+        token2idx = {token: idx for idx, token in enumerate(idx2token)}
         encoded_text = np.array([token2idx[ch] for ch in full_text_str], dtype=np.int32)
         encoded_lines = [
                 [token2idx[ch] for ch in text]
@@ -26,6 +29,7 @@ def tokenize(df, full_text_str, tokenization='char'):
                 ]
     else:
         full_text_str = "<s> " + full_text_str.replace("\n", " </s> <s> ")
+        full_text_str = full_text_str.replace("\t", " <tab> ")
         cut_chars = len(" <s> ")
         print(f"Cutting Before Tokenizing: {full_text_str[-cut_chars:]!r}")
         full_text_str = full_text_str[:-len(" <s> ")]
@@ -67,26 +71,31 @@ def preprocess_akjv(include_book=True):
     return df, full_text_str
 
 class RnnDataset(Dataset):
-    '''
-    RNN format is a set of non-overlapping seq_len sized arrays
-    Transformer format is a sliding window of seq_len arrays
-
-    you could adopt this code for transformer format w/ tweaks to the indexing logic
-    '''
-    def __init__(self, arr, seq_len):
-        # keep only complete input sequences x
-        # reserve one index position for y = x + 1 shift
-        keep_len = ((len(arr) - 1) // seq_len) * seq_len
-        self.arr = arr[:keep_len+1]
-        self.len = keep_len // seq_len
+    def __init__(self, arr, seq_len, style='encoded_text', pad_token='<>'):
+        assert style in ('encoded_text', 'encoded_lines'), (
+                f'style must be "encoded_text" or "encoded_lines"')
+        self.style = style
         self.seq_len = seq_len
 
+        if style == 'encoded_text':
+            # keep only complete input sequences x
+            # reserve one index position for y = x + 1 shift
+            keep_len = ((len(arr) - 1) // seq_len) * seq_len
+            self.arr = arr[:keep_len+1]
+            self.len = keep_len // seq_len
+        else:
+            self.len = len(arr)
+
+
     def __getitem__(self, idx):
-        start = idx * self.seq_len
-        end = start + self.seq_len
-        x = self.arr[start:end]
-        y = self.arr[start+1:end+1]
-        return torch.from_numpy(x).long(), torch.from_numpy(y).long()
+        if self.style == 'encoded_text':
+            start = idx * self.seq_len
+            end = start + self.seq_len
+            x = self.arr[start:end]
+            y = self.arr[start+1:end+1]
+            return torch.from_numpy(x).long(), torch.from_numpy(y).long()
+        else:
+            print('')
 
     def __len__(self):
         return self.len
