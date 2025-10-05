@@ -41,10 +41,13 @@ params = [f for f in os.listdir(os.path.join('models', model_version))
 '''
 if model.tokenization == 'char':
     prime = '\t'
-    stop_char='\n'
+    stop_token='\n'
 else:
     prime = '<tab>'
-    stop_char = '</s>'
+    stop_token = '</s>'
+
+if model.style == 'encoded_lines':
+    stop_token = model.pad_token
 
 book_included_models = ['v8', 'v9']
 if model_version in book_included_models and args.book is not None:
@@ -56,9 +59,9 @@ if model_version in book_included_models and args.book is not None:
 
 print(f"Tokenization: {model.tokenization}")
 
-text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+text = sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+text = sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
 print(f"\n{text}")
-text = sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+text = sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
 print(f"\n{text}")

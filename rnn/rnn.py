@@ -129,9 +129,13 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
 
         if model.tokenization == 'char':
-            text = sample(model, stop_char='\n', prime='\t', top_k=None)
+            # Upper version for whole encoded_text style
+            # Lower version for encoded_lines style (stop on padding)
+            #text = sample(model, stop_token='\n', prime='\t', top_k=None)
+            text = sample(model, stop_token='<>', prime='\t', top_k=None)
         else:
-            text = sample(model, stop_char='</s>', prime='<tab>', top_k=None)
+            #text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
+            text = sample(model, stop_token='<>', prime='<tab>', top_k=None)
         print(f"Output Sample: {text}")
         model.train()
 
@@ -222,7 +226,7 @@ def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
     next_idx = torch.multinomial(probs, num_samples=1).item()
     return next_idx, hidden
 
-def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, temperature=1.0):
+def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None, temperature=1.0):
 
     # model.cuda()
     model.cpu()
@@ -255,8 +259,8 @@ def sample(model, stop_char='\n', response_length=None, prime='\n', top_k=None, 
 
     # Start generating response:
     response_indices = [next_idx]
-    if stop_char:
-        while response_indices[-1] != model.token2idx[stop_char] and len(response_indices) < 500:
+    if stop_token:
+        while response_indices[-1] != model.token2idx[stop_token] and len(response_indices) < 500:
             last_idx = response_indices[-1]
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
             response_indices.append(next_idx)

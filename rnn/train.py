@@ -19,33 +19,44 @@ lr = 0.001
 batch_size = 50
 seq_len = 100
 validation_p = 0.1
-tokenization='word'
+tokenization='char'
 include_book=True
 shuffle = True
-style='encoded_text'
+style='encoded_lines'
+pad_token='<>'
 
 # training:
 reset_each = 'batch' # epoch
 clip_grad=5
-epochs = 30
-resume_from = 20
+epochs = 20
+resume_from = 0
 use_gpu = False
 
 df, full_text_str = utils.preprocess_akjv(include_book)
 # Note vocab is built from entire text corpus (train/val data leakage)
 # For our purposes i think its ok
-vocab, vocab_size, idx2token, token2idx, encoded_text, encoded_lines = utils.tokenize(df, full_text_str, tokenization)
+vocab, vocab_size, idx2token, token2idx, encoded_text, encoded_lines = utils.tokenize(df, full_text_str, tokenization, pad_token=pad_token)
+
 
 if style=='encoded_text':
     encoded_arr = encoded_text
 else:
     encoded_arr = encoded_lines
+
+#if tokenization=='char':
+#    eol_idx = token2idx.get('\n', None)
+#else:
+#    eol_idx = token2idx.get('</s>', None)
+
+pad_idx = token2idx.get(pad_token, None)
 train_loader, val_loader = utils.make_dataloader(encoded_arr,
                                                  batch_size=batch_size,
                                                  seq_len=seq_len,
                                                  validation_p=validation_p,
                                                  shuffle=shuffle,
-                                                 style=style)
+                                                 style=style,
+                                                 #eol_idx = eol_idx,
+                                                 pad_idx=pad_idx)
 
 x, y = next(iter(train_loader))
 print('')
@@ -89,9 +100,9 @@ def save_params():
         json.dump(params, f, indent=4)
 
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
 if resume_from == 0:
-    model = rnn.CharRNN(tokenization, vocab_size, idx2token, token2idx, pad_token='<>',
+    model = rnn.CharRNN(tokenization, vocab_size, idx2token, token2idx, pad_token,
                     embedding_dim, hidden_dim, lstm_layers,
                     embedding_dropout, lstm_dropout, fc_dropout, lr)
     optimizer = torch.optim.Adam(model.parameters(), lr=model.lr)
