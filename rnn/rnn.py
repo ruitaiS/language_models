@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import torch
-import numpy as np
 from torch import nn
 import torch.nn.functional as F
 from nltk.tokenize import RegexpTokenizer
@@ -260,6 +259,7 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
     # Start generating response:
     response_indices = [next_idx]
     if stop_token:
+        print(f"Stop idx: {model.token2idx[stop_token]}")
         while response_indices[-1] != model.token2idx[stop_token] and len(response_indices) < 500:
             last_idx = response_indices[-1]
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
@@ -270,5 +270,7 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
             last_idx = response_indices[-1]
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
             response_indices.append(next_idx)
+
+    print('Response Indices: {response_indices}')
 
     return delimiter.join([idx2token[idx] for idx in response_indices])

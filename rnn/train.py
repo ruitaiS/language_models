@@ -55,7 +55,6 @@ train_loader, val_loader = utils.make_dataloader(encoded_arr,
                                                  validation_p=validation_p,
                                                  shuffle=shuffle,
                                                  style=style,
-                                                 #eol_idx = eol_idx,
                                                  pad_idx=pad_idx)
 
 x, y = next(iter(train_loader))
