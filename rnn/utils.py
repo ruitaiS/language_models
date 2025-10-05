@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, tensor
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import os
@@ -22,9 +22,9 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         vocab_size = len(vocab)
         idx2token =  vocab
         token2idx = {token: idx for idx, token in enumerate(idx2token)}
-        encoded_text = np.array([token2idx[ch] for ch in full_text_str], dtype=np.int32)
+        encoded_text = tensor([token2idx[ch] for ch in full_text_str], dtype=torch.long)
         encoded_lines = [
-                [token2idx[ch] for ch in text]
+                tensor([token2idx[ch] for ch in text], dtype=torch.long)
                 for text in df['text']
                 ]
     else:
@@ -42,9 +42,9 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         vocab_size = len(vocab)
         idx2token = dict(enumerate(vocab))
         token2idx = {word:i for i, word in idx2token.items()}
-        encoded_text = np.array([token2idx[word] for word in words], dtype=np.int32)
+        encoded_text = tensor([token2idx[word] for word in words], dtype=torch.long)
         encoded_lines = [
-                [token2idx[token] for token in tokenizer.tokenize(text)]
+                tensor([token2idx[token] for token in tokenizer.tokenize(text)], dtype=torch.long)
                 for text in df['text']
                 ]
     print(f"Vocabulary Size: {vocab_size}")
@@ -72,16 +72,16 @@ def preprocess_akjv(include_book=True):
     return df, full_text_str
 
 class RnnDataset(Dataset):
-    def __init__(self, arr, seq_len, style='encoded_text', pad_idx=None):
+    def __init__(self, arr, seq_len=None, style='encoded_lines'):
         assert style in ('encoded_text', 'encoded_lines'), (
                 f'style must be "encoded_text" or "encoded_lines"')
         self.style = style
         self.seq_len = seq_len
-        self.pad_idx = pad_idx
 
         if style == 'encoded_text':
             # keep only complete input sequences x
             # reserve one index position for y = x + 1 shift
+            assert self.seq_len is not None
             keep_len = ((len(arr) - 1) // seq_len) * seq_len
             self.arr = arr[:keep_len+1]
             self.len = keep_len // seq_len
@@ -95,32 +95,37 @@ class RnnDataset(Dataset):
             end = start + self.seq_len
             x = self.arr[start:end]
             y = self.arr[start+1:end+1]
-            return torch.from_numpy(x).long(), torch.from_numpy(y).long()
+            return x, y
+            #return torch.from_numpy(x).long(), torch.from_numpy(y).long()
         else:
-            x = self.arr[idx]
-            y = np.concatenate((x[1:], [self.pad_idx]))
-            print(f"x: {x}")
-            print(f"y: {y}")
-            return torch.from_numpy(x).long(), torch.from_numpy(y).long()
+            line = self.arr[idx]
+            x = line[:-1]
+            y = line[1:]
+            return x, y
+            #return torch.from_numpy(x).long(), torch.from_numpy(y).long()
 
     def __len__(self):
         return self.len
 
-def pad_lines(encoded_lines, seq_len, pad_idx, shuffle=False):
-    res = np.full((len(encoded_lines), seq_len), pad_idx)
-    for i, encoded_line in enumerate(encoded_lines):
-        truncated = encoded_line[:seq_len]
-        res[i, : len(truncated)] = truncated
-    if shuffle:
-        np.random.shuffle(res)
-    return res
+def pad(batch, pad_idx):
+    assert all(len(seq_x) == len(seq_y) for seq_x, seq_y in batch)
+    xs, ys = zip(*batch)
+    max_len = max(len(seq_x) for seq_x in xs)
+    batch_size = len(batch)
+    padded_xs = torch.full((batch_size, max_len), pad_idx)
+    padded_ys = torch.full((batch_size, max_len), pad_idx)
+
+    for i, (seq_x, seq_y) in enumerate(batch):
+        padded_xs[i, :len(seq_x)] = seq_x
+        padded_ys[i, :len(seq_y)] = seq_y
+    return padded_xs, padded_ys
+
 
 def make_dataloader(encoded_arr,
                     batch_size, seq_len,
                     validation_p,
                     shuffle=False,
                     style='encoded_text',
-                    #eol_idx=0,
                     pad_idx=None):
     print(f"Batch Size: {batch_size}")
     print(f"Sequence Length: {seq_len}")
@@ -134,30 +139,32 @@ def make_dataloader(encoded_arr,
         # train/val split at closest batch_size * seq_len to validation_p
         # feels wrong to have validation set be an unshuffled chunk, but ok
         split_idx = (int)((len(encoded_arr) * (1-validation_p))//(batch_size*seq_len))*(batch_size*seq_len)
-        print(f"Split Index: {split_idx}")
-        assert split_idx + 1 != len(encoded_arr)
-
+        collate_fn = None
     else:
         assert pad_idx is not None
-        encoded_arr = pad_lines(encoded_arr, seq_len, pad_idx, shuffle=shuffle)
+        if shuffle:
+            np.random.shuffle(encoded_arr)
         split_idx = (int)((len(encoded_arr) * (1-validation_p))//(batch_size))*(batch_size)
-        print(f"Split Index: {split_idx}")
-        assert split_idx + 1 != len(encoded_arr)
+        collate_fn = lambda batch: pad(batch, pad_idx)
 
+    print(f"Split Index: {split_idx}")
+    assert split_idx + 1 != len(encoded_arr)
     train_loader = torch.utils.data.DataLoader(
-            RnnDataset(encoded_arr[:split_idx+1], seq_len, style=style, pad_idx=pad_idx),
-            #RnnDataset(encoded_arr[:split_idx+1], seq_len),
+            #RnnDataset(encoded_arr[:split_idx+1], seq_len, style=style, pad_idx=pad_idx),
+            RnnDataset(encoded_arr[:split_idx+1], seq_len, style=style),
             batch_size=batch_size,
             shuffle=shuffle,
-            drop_last=True)
+            drop_last=True,
+            collate_fn=collate_fn)
     print(f"Train Loader Size: {len(train_loader)}")
 
     val_loader = torch.utils.data.DataLoader(
-            RnnDataset(encoded_arr[split_idx:], seq_len, style=style, pad_idx=pad_idx),
-            #RnnDataset(encoded_arr[split_idx:], seq_len),
+            #RnnDataset(encoded_arr[split_idx:], seq_len, style=style, pad_idx=pad_idx),
+            RnnDataset(encoded_arr[split_idx:], seq_len, style=style),
             batch_size=batch_size,
             shuffle=shuffle,
-            drop_last=True)
+            drop_last=True,
+            collate_fn=collate_fn)
     print(f"Validation Loader Size: {len(val_loader)}")
     assert len(val_loader) >= 0
 

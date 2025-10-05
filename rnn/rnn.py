@@ -131,11 +131,11 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         if model.tokenization == 'char':
             # Upper version for whole encoded_text style
             # Lower version for encoded_lines style (stop on padding)
-            #text = sample(model, stop_token='\n', prime='\t', top_k=None)
-            text = sample(model, stop_token='<>', prime='\t', top_k=None)
+            text = sample(model, stop_token='\n', prime='\t', top_k=None)
+            #text = sample(model, stop_token='<>', prime='\t', top_k=None)
         else:
-            #text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
-            text = sample(model, stop_token='<>', prime='<tab>', top_k=None)
+            text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
+            #text = sample(model, stop_token='<>', prime='<tab>', top_k=None)
         print(f"Output Sample: {text}")
         model.train()
 
@@ -234,9 +234,8 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
     if model.tokenization == 'char':
         delimiter = ''
         idx2token = model.idx2token
-        priming_indices = [model.token2idx[char] for char in prime] 
+        priming_indices = [model.token2idx[char] for char in prime]
     else:
-        #tokenizer = RegexpTokenizer(r"<[^>\s]+>|\w+|[^\w\s]")
         delimiter = ' '
         replacements = {
                 '<s>': '',
@@ -252,6 +251,7 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
         words = tokenizer.tokenize(prime)
         priming_indices = [model.token2idx.get(word, model.token2idx['<?>']) for word in words]
     print(f"Priming Tokens: {[model.idx2token[idx] for idx in priming_indices]}")
+    print(f"Priming Indices: {priming_indices}")
     hidden = model.init_hidden(batch_size = 1)
     # Iterate over priming chars to build up hidden state
     for token_idx in priming_indices:
