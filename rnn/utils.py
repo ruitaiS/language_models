@@ -25,7 +25,7 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         encoded_text = tensor([token2idx[ch] for ch in full_text_str], dtype=torch.long)
         encoded_lines = [
                 tensor([token2idx[ch] for ch in text], dtype=torch.long)
-                for text in df['text']
+                for text in df['processed_text']
                 ]
     else:
         full_text_str = "<s> " + full_text_str.replace("\n", " </s> <s> ")
@@ -33,7 +33,6 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         cut_chars = len(" <s> ")
         print(f"Cutting Before Tokenizing: {full_text_str[-cut_chars:]!r}")
         full_text_str = full_text_str[:-len(" <s> ")]
-        #tokenizer = RegexpTokenizer(r"<[^>\s]+>|\w+|[^\w\s]")
         tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         words = tokenizer.tokenize(full_text_str)
         vocab = sorted(set(words))
@@ -44,8 +43,8 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         token2idx = {word:i for i, word in idx2token.items()}
         encoded_text = tensor([token2idx[word] for word in words], dtype=torch.long)
         encoded_lines = [
-                tensor([token2idx[token] for token in tokenizer.tokenize(text)], dtype=torch.long)
-                for text in df['text']
+                tensor([token2idx[token] for token in tokenizer.tokenize('<s>' + text.replace('\t', '<tab>') + '</s>')], dtype=torch.long)
+                for text in df['processed_text']
                 ]
     print(f"Vocabulary Size: {vocab_size}")
     return vocab, vocab_size, idx2token, token2idx, encoded_text, encoded_lines
@@ -63,12 +62,11 @@ def preprocess_akjv(include_book=True):
     )
     df = df.dropna().reset_index(drop=True)
     if include_book:
-        #full_text_str = "\n".join(df["book"].astype(str) + "\t" + df["text"].astype(str))
-        lines = "<" + df["book"].astype(str) + ">"  + "\t" + df["text"].astype(str)
-        full_text_str = "\n".join(lines)
+        df['processed_text'] = "<" + df["book"].astype(str) + ">"  + "\t" + df["text"].astype(str) + '\n'
     else:
-        full_text_str = "\n".join("\t" + s for s in df["text"].astype(str))
-    full_text_str = full_text_str + '\n' # Ensure last line also gets `end_of_line` character
+        df['processed_text'] = '\t' + df['text'].astype(str) + '\n'
+
+    full_text_str = "".join(df['processed_text'])
     return df, full_text_str
 
 class RnnDataset(Dataset):
@@ -96,13 +94,11 @@ class RnnDataset(Dataset):
             x = self.arr[start:end]
             y = self.arr[start+1:end+1]
             return x, y
-            #return torch.from_numpy(x).long(), torch.from_numpy(y).long()
         else:
             line = self.arr[idx]
             x = line[:-1]
             y = line[1:]
             return x, y
-            #return torch.from_numpy(x).long(), torch.from_numpy(y).long()
 
     def __len__(self):
         return self.len

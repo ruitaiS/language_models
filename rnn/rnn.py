@@ -70,6 +70,13 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
     if resume_from==0 and files:
         sys.exit(f"Error: __checkpoints is not empty.")
 
+    #print1 = model.token2idx['\n']
+    #print2 = model.token2idx['\t']
+    #print3 = model.idx2token[9]
+    #print(f"Stop idx: {print1}")
+    #print(f"Tab idx: {print2}")
+    #print(f"token idx 9: {print3}")
+
     model.train()
     if use_gpu:
         model.cuda()
@@ -80,6 +87,8 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
         epoch_losses = []
         for inputs, targets in train_loader:
             #print(f"Inputs.shape: {inputs.shape} || Targets.shape: {targets.shape}")
+            #print(f"Input 0: {inputs[0]}")
+            #print(f"Target 0: {targets[0]}")
             batch_number += 1
             model.zero_grad()
             if hidden == None or reset_each=='batch':
@@ -104,8 +113,12 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
                   "Batch Loss: {:.4f}".format(loss.item())
                   )
 
-
-        # Every Epoch, check loss on entire validation set:
+        # Every Epoch, print a sample and check loss on entire validation set:
+        if model.tokenization == 'char':
+            text = sample(model, stop_token='\n', prime='\t', top_k=None)
+        else:
+            text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
+        print(f"Output Sample: {text}")
         print("Calculating Validation Set Loss...")
         val_hidden = None
         val_losses = []
@@ -126,16 +139,6 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
             val_losses.append(val_loss.item())
         val_loss_mean = sum(val_losses) / len(val_losses)
         print("Validation Set Loss: {:.4f}".format(val_loss_mean))
-
-        if model.tokenization == 'char':
-            # Upper version for whole encoded_text style
-            # Lower version for encoded_lines style (stop on padding)
-            text = sample(model, stop_token='\n', prime='\t', top_k=None)
-            #text = sample(model, stop_token='<>', prime='\t', top_k=None)
-        else:
-            text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
-            #text = sample(model, stop_token='<>', prime='<tab>', top_k=None)
-        print(f"Output Sample: {text}")
         model.train()
 
         filepath = os.path.join('__checkpoints', f'epoch_{resume_from+e+1}.net')
@@ -259,7 +262,6 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
     # Start generating response:
     response_indices = [next_idx]
     if stop_token:
-        print(f"Stop idx: {model.token2idx[stop_token]}")
         while response_indices[-1] != model.token2idx[stop_token] and len(response_indices) < 500:
             last_idx = response_indices[-1]
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
@@ -271,6 +273,6 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
             next_idx, hidden = next_token_idx(model, last_idx, hidden, top_k, temperature)
             response_indices.append(next_idx)
 
-    print('Response Indices: {response_indices}')
+    print(f'Response Indices: {response_indices}')
 
     return delimiter.join([idx2token[idx] for idx in response_indices])
