@@ -46,8 +46,8 @@ else:
     prime = '<tab>'
     stop_token = '</s>'
 
-if model.style == 'encoded_lines':
-    stop_token = model.pad_token
+#if model.style == 'encoded_lines':
+#    stop_token = model.pad_token
 
 book_included_models = ['v8', 'v9']
 if model_version in book_included_models and args.book is not None:

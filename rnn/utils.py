@@ -116,11 +116,19 @@ def pad(batch, pad_idx):
         padded_ys[i, :len(seq_y)] = seq_y
     return padded_xs, padded_ys
 
+def truncated_pad(encoded_lines, seq_len, pad_idx):
+    result = torch.full((len(encoded_lines), seq_len), pad_idx)
+    for i, encoded_line in enumerate(encoded_lines):
+        truncated = encoded_line[:seq_len]
+        result[i, :len(truncated)] = truncated
+    return result
+
 
 def make_dataloader(encoded_arr,
                     batch_size, seq_len,
                     validation_p,
                     shuffle=False,
+                    truncate=False,
                     style='encoded_text',
                     pad_idx=None):
     print(f"Batch Size: {batch_size}")
@@ -141,7 +149,11 @@ def make_dataloader(encoded_arr,
         if shuffle:
             np.random.shuffle(encoded_arr)
         split_idx = (int)((len(encoded_arr) * (1-validation_p))//(batch_size))*(batch_size)
-        collate_fn = lambda batch: pad(batch, pad_idx)
+        if truncate:
+            print()
+            collate_fn = None
+        else:
+            collate_fn = lambda batch: pad(batch, pad_idx)
 
     print(f"Split Index: {split_idx}")
     assert split_idx + 1 != len(encoded_arr)

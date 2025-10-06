@@ -28,8 +28,8 @@ pad_token='<>'
 # training:
 reset_each = 'batch' # epoch
 clip_grad=5
-epochs = 20
-resume_from = 0
+epochs = 30
+resume_from = 20
 use_gpu = False
 
 df, full_text_str = utils.preprocess_akjv(include_book)
@@ -117,17 +117,17 @@ else:
 
     if model.tokenization == 'char':
         prime = '\t'
-        stop_char='\n'
+        stop_token='\n'
     else:
         prime = '<tab>'
-        stop_char = '</s>'
+        stop_token = '</s>'
 
-    #text = sample(model, stop_char='\n', prime='Genesis\t', temperature=0.65)
-    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+    #text = sample(model, stop_token='\n', prime='Genesis\t', temperature=0.65)
+    text = rnn.sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
     print(f"\n{text}")
-    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+    text = rnn.sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
     print(f"\n{text}")
-    text = rnn.sample(model, stop_char=stop_char, prime=prime, temperature=1.0)
+    text = rnn.sample(model, stop_token=stop_token, prime=prime, temperature=1.0)
     print(f"\n{text}")
 
     optimizer.lr = 0.00025
