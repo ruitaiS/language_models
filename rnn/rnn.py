@@ -115,10 +115,33 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
 
         # Every Epoch, print a sample and check loss on entire validation set:
         if model.tokenization == 'char':
-            text = sample(model, stop_token='\n', prime='\t', top_k=None)
+            prime = '\t'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+
+            prime = '>\t'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+
+            prime = '<'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+
+            prime = '<Genesis>'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+
+            prime = '<Genesis>\t'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
         else:
             text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
-        print(f"Output Sample: {text}")
+            print(f"Output Sample: {text}")
         print("Calculating Validation Set Loss...")
         val_hidden = None
         val_losses = []

@@ -20,7 +20,7 @@ batch_size = 50
 seq_len = 100
 validation_p = 0.1
 tokenization='char'
-include_book=False
+include_book=True
 shuffle = True
 style='encoded_lines'
 pad_token='<>'
@@ -28,8 +28,8 @@ pad_token='<>'
 # training:
 reset_each = 'batch' # epoch
 clip_grad=5
-epochs = 30
-resume_from = 20
+epochs = 20
+resume_from = 0
 use_gpu = False
 
 df, full_text_str = utils.preprocess_akjv(include_book)
