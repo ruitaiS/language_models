@@ -7,13 +7,15 @@ import utils
 
 # parameters ----------------------------------------------
 # model:
-embedding_dim = 32
+embedding_dim = 64
 hidden_dim = 512
 lstm_layers = 3
-embedding_dropout = 0.3
-lstm_dropout = 0.5
-fc_dropout = 0.5
+embedding_dropout = 0.15
+lstm_dropout = 0.3
+fc_dropout = 0.3
 lr = 0.001
+#betas=(0.9, 0.95)
+#weight_decay=0.01
 
 # batching:
 batch_size = 50
@@ -27,7 +29,7 @@ pad_token='<>'
 
 # training:
 reset_each = 'batch' # epoch
-clip_grad=5
+clip_grad=1
 epochs = 20
 resume_from = 0
 use_gpu = False
@@ -83,6 +85,8 @@ def save_params():
             'lstm_dropout': model.lstm_dropout,
             'fc_dropout': model.fc_dropout,
             'lr': optimizer.param_groups[0]['lr'],
+            #'betas': optimizer.param_groups[0]['betas'],
+            #'weight_decay': optimizer.param_groups[0]['weight_decay'],
             'batch_size': batch_size,
             'seq_len': seq_len,
             'validation_p': validation_p,

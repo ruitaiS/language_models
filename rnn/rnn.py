@@ -216,7 +216,9 @@ def load_rnn_model(filepath, optimizer=None):
         embedding_dropout=checkpoint.get('embedding_dropout', 0),
         lstm_dropout=checkpoint['lstm_dropout'],
         fc_dropout=checkpoint['fc_dropout'],
-        lr=checkpoint['lr']
+        lr=checkpoint['lr'],
+        #betas=checkpoint.get('betas', None),
+        #weight_decay=checkpoint.get('weight_decay', None)
     )
     model.load_state_dict(checkpoint['state_dict'])
     if not optimizer:
