@@ -30,8 +30,8 @@ pad_token='<>'
 # training:
 reset_each = 'batch' # epoch
 clip_grad=1
-epochs = 20
-resume_from = 0
+epochs = 30
+resume_from = 20
 use_gpu = False
 
 df, full_text_str = utils.preprocess_akjv(include_book)
@@ -120,7 +120,10 @@ else:
 
 
     if model.tokenization == 'char':
-        prime = '\t'
+        if include_book:
+            prime = '<'
+        else:
+            prime = '\t'
         stop_token='\n'
     else:
         prime = '<tab>'

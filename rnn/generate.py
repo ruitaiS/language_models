@@ -49,7 +49,7 @@ else:
 #if model.style == 'encoded_lines':
 #    stop_token = model.pad_token
 
-book_included_models = ['v8', 'v9']
+book_included_models = ['v8', 'v9', 'v11']
 if model_version in book_included_models and args.book is not None:
     print(f"Book: {args.book}")
     if model.tokenization == 'char':

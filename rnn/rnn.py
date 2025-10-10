@@ -115,6 +115,17 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
 
         # Every Epoch, print a sample and check loss on entire validation set:
         if model.tokenization == 'char':
+
+            prime = '<'
+            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+            text = sample(model, stop_token='\n', prime=prime, top_k=None)
+            print(f"Output Sample: {text}")
+            
+            '''
             prime = '\t'
             print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
             text = sample(model, stop_token='\n', prime=prime, top_k=None)
@@ -124,12 +135,6 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
             print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
             text = sample(model, stop_token='\n', prime=prime, top_k=None)
             print(f"Output Sample: {text}")
-
-            prime = '<'
-            print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
-            text = sample(model, stop_token='\n', prime=prime, top_k=None)
-            print(f"Output Sample: {text}")
-
             prime = '<Genesis>'
             print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
             text = sample(model, stop_token='\n', prime=prime, top_k=None)
@@ -139,6 +144,8 @@ def train(model, optimizer, criterion, train_loader, val_loader, epochs, reset_e
             print(f"Prime: {prime} idx: {[model.token2idx[char] for char in prime]}")
             text = sample(model, stop_token='\n', prime=prime, top_k=None)
             print(f"Output Sample: {text}")
+            '''
+
         else:
             text = sample(model, stop_token='</s>', prime='<tab>', top_k=None)
             print(f"Output Sample: {text}")
@@ -300,4 +307,4 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
 
     print(f'Response Indices: {response_indices}')
 
-    return delimiter.join([idx2token[idx] for idx in response_indices])
+    return prime + delimiter.join([idx2token[idx] for idx in response_indices])

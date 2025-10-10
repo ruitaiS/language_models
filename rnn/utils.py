@@ -17,7 +17,7 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
         # and forms a natural 'book' vs. 'text' delineator in the akjv.txt corpus
         #idx2token = dict(enumerate(vocab))
         #token2idx = {ch:ii for ii, ch in idx2token.items()}
-        print("Char Tokenizaiton")
+        print("Char Tokenization")
         vocab = [pad_token] + sorted(tuple(set(full_text_str)))
         vocab_size = len(vocab)
         idx2token =  vocab
@@ -28,6 +28,7 @@ def tokenize(df, full_text_str, tokenization='char', pad_token='<>'):
                 for text in df['processed_text']
                 ]
     else:
+        print("Word Tokenization")
         full_text_str = "<s> " + full_text_str.replace("\n", " </s> <s> ")
         full_text_str = full_text_str.replace("\t", " <tab> ")
         cut_chars = len(" <s> ")
