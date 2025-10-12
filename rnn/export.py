@@ -1,15 +1,15 @@
 import os
 import sys
 import argparse
-from rnn import load_rnn_model, sample
+import torch
+from rnn import load_rnn_model
 
 parser = argparse.ArgumentParser(description="Generate Text from RNN Model")
 parser.add_argument('-v', '--version', type=int, required=False, help='Model Version')
 parser.add_argument('-e', '--epoch', type=int, required=False, help='Epoch Number')
-parser.add_argument('-b', '--book', type=str, required=False, help='Book Name')
 args = parser.parse_args()
 
-model_version = 'v' + str(args.version) if args.version is not None else 'v7'
+model_version = 'v' + str(args.version) if args.version is not None else 'v11'
 files = [f for f in os.listdir(os.path.join('models', model_version))
          if f.startswith("epoch_") and f.endswith(".net")]
 if not files:
@@ -30,5 +30,22 @@ except FileNotFoundError as e:
         print(files)
         sys.exit(1)
 
-print(f"Loaded model {model_version} epoch {int(model_filename[6:-4])}")
+print(f"Loaded model {model_version} epoch {model_epoch}")
 print(f"\nModel: {model}")
+
+# Single Token Trace Input:
+batch_size, seq_len = (1,1)
+example_x = torch.randint(0, model.vocab_size, (batch_size, seq_len), dtype=torch.long)
+example_hidden = model.init_hidden(batch_size)
+
+os.makedirs('onnx_exports', exist_ok=True)
+model.eval()
+torch.onnx.export(
+        model,
+        args=(example_x, example_hidden),
+        f=os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}.onnx'),
+        input_names=['x', 'hidden'],
+        output_names=['logits', 'new_hidden'],
+        dynamic_axes=None,
+        dynamo=True
+        )

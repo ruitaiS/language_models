@@ -3,3 +3,6 @@ Levenshtein
 nltk
 scipy
 torch
+
+# rnn/export.py
+onnxscript

@@ -30,7 +30,7 @@ except FileNotFoundError as e:
         print(files)
         sys.exit(1)
 
-print(f"Loaded model {model_version} epoch {int(model_filename[6:-4])}")
+print(f"Loaded model {model_version} epoch {model_epoch}")
 print(f"\nModel: {model}")
 
 '''
@@ -49,13 +49,20 @@ else:
 #if model.style == 'encoded_lines':
 #    stop_token = model.pad_token
 
+# This is pretty janky tbqh
 book_included_models = ['v8', 'v9', 'v11']
-if model_version in book_included_models and args.book is not None:
-    print(f"Book: {args.book}")
-    if model.tokenization == 'char':
-        prime = f'<{str(args.book)}>\t'
+if model_version in book_included_models:
+    if args.book is not None:
+        print(f"Book: {args.book}")
+        if model.tokenization == 'char':
+            prime = f'<{str(args.book)}>\t'
+        else:
+            prime = f'<s> <{str(args.book)}> <tab>'
     else:
-        prime = f'<s> <{str(args.book)}> <tab>'
+        if model.tokenization == 'char':
+            prime='<'
+        else:
+            prime='<s>'
 
 print(f"Tokenization: {model.tokenization}")
 
