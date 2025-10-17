@@ -255,7 +255,7 @@ def sample(model, stop_token='\n', response_length=None, prime='\n', top_k=None,
         tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         words = tokenizer.tokenize(prime)
         priming_indices = [model.token2idx.get(word, model.token2idx['<?>']) for word in words]
-    print(f"Priming Tokens: {[model.idx2token[idx] for idx in priming_indices]}")
+    print(f"Priming Tokens: {[idx2token[idx] for idx in priming_indices]}")
     print(f"Priming Indices: {priming_indices}")
     hidden = model.init_hidden(batch_size = 1)
     # Iterate over priming chars to build up hidden state

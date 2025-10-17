@@ -1,0 +1,10 @@
+{
+  "specials": [
+    "<>",
+    "\t",
+    "\n"
+  ],
+  "chars": " !(),-.123:;<>?ABCDEFGHIJKLMNOPQRSTUVWYZabcdefghijklmnopqrstuvwxyz—’",
+  "lstm_layers": 3,
+  "hidden_dim": 512
+}
