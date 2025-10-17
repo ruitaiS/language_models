@@ -59,5 +59,9 @@ model_assets = {
         'hidden_dim': model.hidden_dim
         }
 
+minify = True
 with open(os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}_assets.json'), "w", encoding="utf-8") as f:
-    json.dump(model_assets, f, ensure_ascii=False, indent=2)
+    if minify:
+        json.dump(model_assets, f, ensure_ascii=False, separators=(",", ":"))
+    else:
+        json.dump(model_assets, f, ensure_ascii=False, indent=2)
