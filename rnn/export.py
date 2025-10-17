@@ -3,6 +3,7 @@ import sys
 import json
 import argparse
 import torch
+import onnx
 from rnn import load_rnn_model
 
 parser = argparse.ArgumentParser(description="Select RNN Model For Export")
@@ -52,6 +53,14 @@ torch.onnx.export(
         dynamic_axes=None,
         dynamo=True
         )
+
+combine=True
+if combine:
+    split_model = onnx.load(os.path.join(export_folder, f'model.onnx'))
+    onnx.save(split_model, os.path.join(export_folder, 'combined.onnx'), save_as_external_data=False)
+    os.remove(os.path.join(export_folder, f'model.onnx'))
+    os.remove(os.path.join(export_folder, f'model.onnx.data'))
+    os.rename(os.path.join(export_folder, 'combined.onnx'), os.path.join(export_folder, 'model.onnx'))
 
 model_assets = {
         'specials': model.idx2token[:3],
