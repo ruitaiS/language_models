@@ -40,12 +40,13 @@ example_x = torch.randint(0, model.vocab_size, (batch_size, seq_len), dtype=torc
 example_hidden = model.init_hidden(batch_size)
 h, c = example_hidden
 
-os.makedirs('onnx_exports', exist_ok=True)
+export_folder = os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}')
+os.makedirs(export_folder, exist_ok=True)
 model.eval()
 torch.onnx.export(
         model,
         args=(example_x, example_hidden),
-        f=os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}.onnx'),
+        f=os.path.join(export_folder, f'model.onnx'),
         input_names=['x', 'hidden'],
         output_names=['logits', 'new_hidden'],
         dynamic_axes=None,
@@ -60,7 +61,7 @@ model_assets = {
         }
 
 minify = True
-with open(os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}_assets.json'), "w", encoding="utf-8") as f:
+with open(os.path.join(export_folder, 'model_assets.json'), "w", encoding="utf-8") as f:
     if minify:
         json.dump(model_assets, f, ensure_ascii=False, separators=(",", ":"))
     else:
