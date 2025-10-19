@@ -6,6 +6,18 @@ import torch
 import onnx
 from rnn import load_rnn_model
 
+# Unpack hidden state to individual tensors instead of tuple
+class RnnWrapper(torch.nn.Module):
+    def __init__(self, base_model):
+        super().__init__()
+        self.base_model = base_model
+
+    def forward(self, x, h, c):
+        logits, (h, c) = self.base_model(x, (h, c))
+        return logits, h, c
+
+#------------
+
 parser = argparse.ArgumentParser(description="Select RNN Model For Export")
 parser.add_argument('-v', '--version', type=int, required=False, help='Model Version')
 parser.add_argument('-e', '--epoch', type=int, required=False, help='Epoch Number')
@@ -26,6 +38,7 @@ model_filename = f"epoch_{model_epoch}.net"
 filepath = os.path.join('models',  model_version, model_filename)
 try:
     model, optimizer = load_rnn_model(filepath)
+    model = RnnWrapper(model)
 except FileNotFoundError as e:
         print(f"models/{model_version}/{model_filename} not found.")
         print(f"Available in {model_version}:")
@@ -37,19 +50,18 @@ print(f"\nModel: {model}")
 
 # Single Token Trace Input:
 batch_size, seq_len = (1,1)
-example_x = torch.randint(0, model.vocab_size, (batch_size, seq_len), dtype=torch.long)
-example_hidden = model.init_hidden(batch_size)
-h, c = example_hidden
+example_x = torch.randint(0, model.base_model.vocab_size, (batch_size, seq_len), dtype=torch.long)
+example_h, example_c = model.base_model.init_hidden(batch_size)
 
 export_folder = os.path.join('onnx_exports', f'{model_version}_epoch_{model_epoch}')
 os.makedirs(export_folder, exist_ok=True)
 model.eval()
 torch.onnx.export(
         model,
-        args=(example_x, example_hidden),
+        args=(example_x, example_h, example_c),
         f=os.path.join(export_folder, f'model.onnx'),
-        input_names=['x', 'hidden'],
-        output_names=['logits', 'new_hidden'],
+        input_names=['x', 'h', 'c'],
+        output_names=['logits', 'new_h', 'new_c'],
         dynamic_axes=None,
         dynamo=True
         )
@@ -63,10 +75,10 @@ if combine:
     os.rename(os.path.join(export_folder, 'combined.onnx'), os.path.join(export_folder, 'model.onnx'))
 
 model_assets = {
-        'specials': model.idx2token[:3],
-        'chars': "".join(model.idx2token[3:]),
-        'lstm_layers': model.lstm_layers,
-        'hidden_dim': model.hidden_dim
+        'specials': model.base_model.idx2token[:3],
+        'chars': "".join(model.base_model.idx2token[3:]),
+        'lstm_layers': model.base_model.lstm_layers,
+        'hidden_dim': model.base_model.hidden_dim
         }
 
 minify = True
