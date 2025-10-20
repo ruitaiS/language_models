@@ -7,6 +7,7 @@ import onnx
 from rnn import load_rnn_model
 
 # Unpack hidden state to individual tensors instead of tuple
+# Return Softmaxed probabilities (temp = 1 baked in) instead of raw logits
 class RnnWrapper(torch.nn.Module):
     def __init__(self, base_model):
         super().__init__()
@@ -14,7 +15,8 @@ class RnnWrapper(torch.nn.Module):
 
     def forward(self, x, h, c):
         logits, (h, c) = self.base_model(x, (h, c))
-        return logits, h, c
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        return probs, h, c
 
 #------------
 
@@ -60,8 +62,8 @@ torch.onnx.export(
         model,
         args=(example_x, example_h, example_c),
         f=os.path.join(export_folder, f'model.onnx'),
-        input_names=['x', 'h', 'c'],
-        output_names=['logits', 'new_h', 'new_c'],
+        input_names=['input_idx', 'input_h', 'input_c'],
+        output_names=['probs', 'h', 'c'],
         dynamic_axes=None,
         dynamo=True
         )
