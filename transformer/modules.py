@@ -25,6 +25,105 @@ class EmbeddingLayer(nn.Module):
         # X.shape = (batch_size, seq_len, d) ; padding_mask.shape = (batch_size, seq_len)
         return X, padding_mask
 
+class TransformerBlock (nn.Module):
+    # TODO: dropout
+    def __init__(self, d, total_heads, masked = True):
+        super().__init__()
+        self.norm1 = LayerNorm(d)
+        self.norm2 = LayerNorm(d)
+        self.ffn = FFN(d)
+        self.mha = MHA(d, total_heads, masked)
+        #print('transformer init')
+    def forward(self, X, padding_mask):
+        # pg. 10
+        # with input x:
+        residual = X
+        X = self.norm1(X)
+        X = self.mha(X, padding_mask)
+        X += residual
+        residual = X
+        X = self.norm2(X)
+        X = self.ffn(X)
+        X += residual
+        #print(f"transformer(X) : {X}")
+        return X
+    
+class LanguageModelHead(nn.Module):
+    def __init__(self, E):
+        super().__init__()
+        # for the unembedding matrix you can use the embedding matrix transposed
+        # converts a d-length embedding back into a vocab_size length raw scores vector
+        # softmax along the vector for a probability distribution
+        # pg. 16-18
+
+        # NOTE: Wonder what happens if you initialize it at E_t
+        # but then trained it seperately
+        self.register_buffer("E_t", E.weight.T)
+        #print('lm head init')
+    def forward(self, X):
+        # X shape = (batch_size, seq_len, d)
+        logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
+
+        # get shape (batch_size, seq_len, vocab_size) list of raw scores (logits) for each batch
+
+        #print(f'lmh logits: {logits}')
+        #print('lm head forward')
+        return logits # shape (batch_size, seq_len, vocab_size)
+    
+class LayerNorm(nn.Module):
+    def __init__(self, d):
+        super().__init__()
+        self.gain = nn.Parameter(torch.ones(d))
+        self.offset = nn.Parameter(torch.zeros(d))
+        #print('layernorm init')
+    def forward(self, X):
+        # X.shape = (batch_size, seq_length, embedding dimension d)
+        # Normalize each d-length embedding vector in X:
+        means = X.mean(dim=-1, keepdim=True) # dim=-1 is d dimension
+        sdevs = X.std(dim=-1, unbiased=False, keepdim=True)
+        X = self.gain * ((X - means) / (sdevs + 1e-9)) + self.offset
+        #print(f'layernorm(X): {X}')
+        return X
+    
+class FFN(nn.Module): # Feed Forward Network
+    def __init__(self, d, d_hidden = None):
+        super().__init__()
+        # d_hidden is the number of nodes / dimensions on the hidden layer
+        # (Book calls this dff)
+        # W1, b1 take us to hidden layer
+        # W2, b2 take us back to number of embed feature dimensions d
+        # d >> dff >> d
+        if not d_hidden or d_hidden <= d:
+            d_hidden = 4*d
+
+        self.W1 = nn.Parameter(torch.randn(d, d_hidden))
+        self.b1 = nn.Parameter(torch.zeros(d_hidden))
+
+        self.W2 = nn.Parameter(torch.randn(d_hidden, d))
+        self.b2 = nn.Parameter(torch.zeros(d))
+        #print('ffn init')
+
+    def forward(self, X):
+        # ReLu(xW1+b1)W2 + b2
+        hidden = torch.relu(torch.matmul(X, self.W1) + self.b1) # ReLu(xW1 + b1)
+        output = torch.matmul(hidden, self.W2) + self.b2 # hidden * W2 + b2
+        #print(f'ffn(X): {output}')
+        return output
+
+class MHA(nn.Module): # Multi-Headed Attention
+    def __init__(self, d, total_heads, masked = True):
+        super().__init__()
+        assert d % total_heads == 0, "d must be divisible by total number of heads"
+        self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
+        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, masked) for _ in range(total_heads)])
+        self.W_0 = nn.Linear(d, d)
+        #print('mha init')
+    def forward(self, X, padding_mask):
+        output = torch.cat([head(X, padding_mask) for head in self.heads], dim=-1)
+        output = self.W_0(output)
+        #print(f'mha(X): {output}')
+        return output
+
 class SHA(nn.Module): # Single Head Attention
     # d_k and d_v also known as head dimension, d_h, in MHA context
     def __init__(self, d, d_k, d_v, masked = True):
@@ -81,114 +180,17 @@ class SHA(nn.Module): # Single Head Attention
         return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
         #return input.masked_fill(~autoregression_mask, float('-1e9'))
 
-class MHA(nn.Module): # Multi-Headed Attention
-    def __init__(self, d, total_heads, masked = True):
-        super().__init__()
-        assert d % total_heads == 0, "d must be divisible by total number of heads"
-        self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
-        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, masked) for _ in range(total_heads)])
-        self.W_0 = nn.Linear(d, d)
-        #print('mha init')
-    def forward(self, X, padding_mask):
-        output = torch.cat([head(X, padding_mask) for head in self.heads], dim=-1)
-        output = self.W_0(output)
-        #print(f'mha(X): {output}')
-        return output
-
-class FFN(nn.Module): # Feed Forward Network
-    def __init__(self, d, d_hidden = None):
-        super().__init__()
-        # d_hidden is the number of nodes / dimensions on the hidden layer
-        # (Book calls this dff)
-        # W1, b1 take us to hidden layer
-        # W2, b2 take us back to number of embed feature dimensions d
-        # d >> dff >> d
-        if not d_hidden or d_hidden <= d:
-            d_hidden = 4*d
-
-        self.W1 = nn.Parameter(torch.randn(d, d_hidden))
-        self.b1 = nn.Parameter(torch.zeros(d_hidden))
-
-        self.W2 = nn.Parameter(torch.randn(d_hidden, d))
-        self.b2 = nn.Parameter(torch.zeros(d))
-        #print('ffn init')
-
-    def forward(self, X):
-        # ReLu(xW1+b1)W2 + b2
-        hidden = torch.relu(torch.matmul(X, self.W1) + self.b1) # ReLu(xW1 + b1)
-        output = torch.matmul(hidden, self.W2) + self.b2 # hidden * W2 + b2
-        #print(f'ffn(X): {output}')
-        return output
-
-class LayerNorm(nn.Module):
-    def __init__(self, d):
-        super().__init__()
-        self.gain = nn.Parameter(torch.ones(d))
-        self.offset = nn.Parameter(torch.zeros(d))
-        #print('layernorm init')
-    def forward(self, X):
-        # X.shape = (batch_size, seq_length, embedding dimension d)
-        # Normalize each d-length embedding vector in X:
-        means = X.mean(dim=-1, keepdim=True) # dim=-1 is d dimension
-        sdevs = X.std(dim=-1, unbiased=False, keepdim=True)
-        X = self.gain * ((X - means) / (sdevs + 1e-9)) + self.offset
-        #print(f'layernorm(X): {X}')
-        return X
-
-class TransformerBlock (nn.Module):
-    # TODO: dropout
-    def __init__(self, d, total_heads, masked = True):
-        super().__init__()
-        self.norm1 = LayerNorm(d)
-        self.norm2 = LayerNorm(d)
-        self.ffn = FFN(d)
-        self.mha = MHA(d, total_heads, masked)
-        #print('transformer init')
-    def forward(self, X, padding_mask):
-        # pg. 10
-        # with input x:
-        residual = X
-        X = self.norm1(X)
-        X = self.mha(X, padding_mask)
-        X += residual
-        residual = X
-        X = self.norm2(X)
-        X = self.ffn(X)
-        X += residual
-        #print(f"transformer(X) : {X}")
-        return X
-
-class LanguageModelHead(nn.Module):
-    def __init__(self, E):
-        super().__init__()
-        # for the unembedding matrix you can use the embedding matrix transposed
-        # converts a d-length embedding back into a vocab_size length raw scores vector
-        # softmax along the vector for a probability distribution
-        # pg. 16-18
-
-        # NOTE: Wonder what happens if you initialize it at E_t
-        # but then trained it seperately
-        self.register_buffer("E_t", E.weight.T)
-        #print('lm head init')
-    def forward(self, X):
-        # X shape = (batch_size, seq_len, d)
-        logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
-
-        # get shape (batch_size, seq_len, vocab_size) list of raw scores (logits) for each batch
-
-        #print(f'lmh logits: {logits}')
-        #print('lm head forward')
-        return logits # shape (batch_size, seq_len, vocab_size)
-
 class LanguageModel(nn.Module):
     def __init__(self, vocab, d, context_len, num_layers, total_heads):
         super().__init__()
         self.xft, self. tfx = vocab
         self.vocab_size = len(self.xft)
         self.context_len = context_len
+
         self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len, padding_token_index = self.xft['<>'])
         self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
         self.lm_head = LanguageModelHead(self.embedding_layer.E)
+        
         self.loss_func = nn.CrossEntropyLoss(reduction="mean", ignore_index=self.xft['<>']) # TODO: This needs a test
 
     def forward(self, token_batch, targets = None):
