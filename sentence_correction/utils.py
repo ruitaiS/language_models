@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import math
@@ -16,25 +17,21 @@ def recurse(remaining, phrases, log_phrase_probs, log_transition_matrix, idx2tok
     log_phrase_probs = np.array(log_phrase_probs) # TODO: check if you can remove this
     observed = remaining.pop(0)
     log_emission_probs = np.array([logP_emission(observed, word, l=0.01) for word in idx2token.values()])
-
-
     log_product_matrix = log_phrase_probs[:, None] + log_transition_matrix + log_emission_probs[None, :] # Explanation for this in ecse_526/p2.py line 35
     indices = np.argmax(log_product_matrix, axis=0).tolist()
-    # TODO: Remove below after confirmed useless (feeds strings instead of token indexes as sequences)
-    #updated_phrases = [phrases[phrase_index] + [tfx.get(token_index, '<?>')] for token_index, phrase_index in enumerate(indices)]
     updated_phrases = [phrases[phrase_index] + [token_index] for token_index, phrase_index in enumerate(indices)]
     updated_phrase_log_probs = np.max(log_product_matrix, axis=0)
 
     # TODO: sometimes it outputs '<s>' and idk why
-    if idx2token is not None: # eg. should print
-        token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
-        phrase = ' '.join([idx2token.get(token_id, '<?>') for token_id in token_ids])
-        print(f"\r{phrase}", end="", flush=True)
-        if not remaining: print("\n")
+    token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
+    phrase = ' '.join([idx2token.get(token_id, '<?>') for token_id in token_ids])
+    print(f"\r{phrase}", end="", flush=True)
+    if not remaining: print("\n")
 
     if remaining:
-        return recurse(remaining, updated_phrases, updated_phrase_log_probs, idx2token)
+        return recurse(remaining, updated_phrases, updated_phrase_log_probs, log_transition_matrix, idx2token)
     else:
+        print("H")
         token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
         return token_ids
 
@@ -61,18 +58,34 @@ def build_vocab():
     token2idx = {word:i for i, word in idx2token.items()}
     return vocab_size, idx2token, token2idx
 
+def remove_verse_reference(dataset):
+    output = []
+    for line in dataset:
+        parts = line.split("\t")
+        if len(parts) > 1:
+            text = parts[1].strip()
+            output.append(text)
+        else:
+            print(f"Skipped line: {line}")
+    return output
+
 def extract_components():
     vocab = set()
     bigram_counts = {}
     bigram_totals = {}
-    for sentence in brown.sents():
+    #for sentence in brown.sents():
         # Recombine to string, and use our tokenizer instead
-        text = " ".join(sentence)
-        words = ['<s>'] + tokenize(text) + ['</s>']
-        vocab.update(words)
-        for i in range(1, len(words)):
-            bigram_counts[words[i-1], words[i]] = bigram_counts.get((words[i-1], words[i]), 0) + 1
-            bigram_totals[words[i-1]] = bigram_totals.get(words[i-1], 0) + 1
+        #text = " ".join(sentence)
+    input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../datasets/akjv.txt')
+    with open(input_file, 'r') as infile:
+        lines = infile.readlines()
+        lines = remove_verse_reference(lines)
+        for text in lines:
+            words = ['<s>'] + tokenize(text) + ['</s>']
+            vocab.update(words)
+            for i in range(1, len(words)):
+                bigram_counts[words[i-1], words[i]] = bigram_counts.get((words[i-1], words[i]), 0) + 1
+                bigram_totals[words[i-1]] = bigram_totals.get(words[i-1], 0) + 1
 
     # Reorder and Add Special Tokens
     vocab.discard('<s>')
@@ -90,12 +103,9 @@ def extract_components():
     bigram_lp = {(token2idx[bigram[0]], token2idx[bigram[1]]) : math.log10(prob) for bigram, prob in bigram_probs.items()}
     bigram_lp = pd.DataFrame([{'x_i': x_i, 'x_j': x_j, 'e':e} for (x_i, x_j), e in bigram_lp.items()])
 
-    log_transition_matrix = None # TODO (bigger vocab makes this a problem)
-    '''
-    rows = bigram_lp['x_i'].to_numpy()
-    cols = bigram_lp['x_j'].to_numpy()
-    vals = bigram_lp['e'].to_numpy()
-    log_transition_matrix = coo_matrix((vals, (rows, cols)), shape=(vocab_size, vocab_size))
-    '''
+    # TODO: This becomes intractable for larger vocabularies (eg. Brown text corpus)
+    # Needs a pruning step for 
+    log_transition_matrix = bigram_lp.pivot(index = 'x_i', columns = 'x_j', values='e').fillna(float('-inf'))
+    log_transition_matrix = log_transition_matrix.reindex(index=list(range(vocab_size)), columns=list(range(vocab_size)), method='pad', fill_value=float('-inf'))
 
     return vocab_size, idx2token, token2idx, log_transition_matrix

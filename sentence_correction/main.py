@@ -4,6 +4,7 @@ import pandas as pd
 #vocab_size, idx2token, token2idx = utils.build_vocab()
 vocab_size, idx2token, token2idx, log_transition_matrix = utils.extract_components()
 print(list(idx2token.items())[:10])
+print(log_transition_matrix)
 
 
 #bigram_lp = None # TODO
