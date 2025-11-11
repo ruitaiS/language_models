@@ -3,18 +3,14 @@ import pandas as pd
 import numpy as np
 import math
 import Levenshtein
-from scipy.sparse import coo_matrix
-import nltk
-from nltk.corpus import brown
 from nltk.tokenize import RegexpTokenizer
-nltk.download('brown')
 
 def logP_emission(observed, word, l = 0.01):
     k = Levenshtein.distance(observed.lower(), word.lower())
     return k * math.log(l) - math.lgamma(k + 1) - l
 
 def recurse(remaining, phrases, log_phrase_probs, log_transition_matrix, idx2token):
-    log_phrase_probs = np.array(log_phrase_probs) # TODO: check if you can remove this
+    log_phrase_probs = np.array(log_phrase_probs) # TODO: Janky
     observed = remaining.pop(0)
     log_emission_probs = np.array([logP_emission(observed, word, l=0.01) for word in idx2token.values()])
     log_product_matrix = log_phrase_probs[:, None] + log_transition_matrix + log_emission_probs[None, :] # Explanation for this in ecse_526/p2.py line 35
@@ -31,7 +27,6 @@ def recurse(remaining, phrases, log_phrase_probs, log_transition_matrix, idx2tok
     if remaining:
         return recurse(remaining, updated_phrases, updated_phrase_log_probs, log_transition_matrix, idx2token)
     else:
-        print("H")
         token_ids = updated_phrases[np.argmax(updated_phrase_log_probs)]
         return token_ids
 
@@ -39,24 +34,6 @@ def tokenize(text):
     tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
     words = tokenizer.tokenize(text)
     return words
-
-def build_vocab():
-    dataset_tokens = []
-    for fileid in brown.fileids():
-        text = brown.raw(fileid)
-        tokens = tokenize(text)
-        dataset_tokens.extend(tokens)
-    vocab = sorted(set(token for token in dataset_tokens))
-
-    vocab.insert(0, '<?>') # out of dictionary token
-    vocab.insert(1, '<s>') # start token
-    #vocab.insert(2, '</s>') # end token
-    #vocab.insert(3, '<>') # pad token
-
-    vocab_size = len(vocab)
-    idx2token = dict(enumerate(vocab))
-    token2idx = {word:i for i, word in idx2token.items()}
-    return vocab_size, idx2token, token2idx
 
 def remove_verse_reference(dataset):
     output = []
@@ -73,9 +50,6 @@ def extract_components():
     vocab = set()
     bigram_counts = {}
     bigram_totals = {}
-    #for sentence in brown.sents():
-        # Recombine to string, and use our tokenizer instead
-        #text = " ".join(sentence)
     input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../datasets/akjv.txt')
     with open(input_file, 'r') as infile:
         lines = infile.readlines()
@@ -92,8 +66,6 @@ def extract_components():
     vocab = sorted(vocab)
     vocab.insert(0, '<?>') # out of dictionary token
     vocab.insert(1, '<s>') # start token
-    #vocab.insert(2, '</s>') # end token
-    #vocab.insert(3, '<>') # pad token
 
     vocab_size = len(vocab)
     idx2token = dict(enumerate(vocab))
@@ -104,7 +76,7 @@ def extract_components():
     bigram_lp = pd.DataFrame([{'x_i': x_i, 'x_j': x_j, 'e':e} for (x_i, x_j), e in bigram_lp.items()])
 
     # TODO: This becomes intractable for larger vocabularies (eg. Brown text corpus)
-    # Needs a pruning step for 
+    # For bible text it's ok (10k vs. 50k vocab), but needs a pruning step for general use
     log_transition_matrix = bigram_lp.pivot(index = 'x_i', columns = 'x_j', values='e').fillna(float('-inf'))
     log_transition_matrix = log_transition_matrix.reindex(index=list(range(vocab_size)), columns=list(range(vocab_size)), method='pad', fill_value=float('-inf'))
 

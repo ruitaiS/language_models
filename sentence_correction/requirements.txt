@@ -1,7 +1,4 @@
-modules==1.0.0
 nltk==3.9.2
 numpy==2.3.4
 pandas==2.3.3
 python_Levenshtein==0.27.3
-torch==2.9.0
-scipy
