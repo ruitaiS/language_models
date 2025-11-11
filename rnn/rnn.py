@@ -5,7 +5,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from nltk.tokenize import RegexpTokenizer
-
 import utils
 
 class CharRNN(nn.Module):

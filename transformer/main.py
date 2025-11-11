@@ -57,6 +57,7 @@ model_data = load_model(model_name)
 xft, tfx = model_data['vocab']
 context_len = model_data['params']['context_len']
 vocab_size = len(xft)
+print(f"Vocab Size: {vocab_size}")
 bigram_lp = model_data['bigram']
 
 log_transition_matrix = bigram_lp.pivot(index = 'x_i', columns = 'x_j', values='e').fillna(float('-inf'))

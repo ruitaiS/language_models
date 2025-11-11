@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import Levenshtein
 import math
-import data
+import utils
 
-vocab = data.get_vocab()
-bigram = data.get_bigram()
+vocab = utils.get_vocab()
+bigram = utils.get_bigram()
 transition_matrix = bigram.pivot(index='x_i', columns='x_j', values='normalized_P').fillna(0)
 transition_matrix = transition_matrix.reindex(index=list(range(len(vocab))), columns=list(range(len(vocab))), method="pad", fill_value=0)
 log_transition_matrix = np.log(transition_matrix.replace(0, np.finfo(float).tiny))
@@ -50,10 +50,6 @@ def recurse(remaining, phrases, log_phrase_probs):
    
 #Sentences to Correct
 E_1 = ['I','think','hat','twelve','thousand','pounds']
-E_2 = ['she', 'haf', 'heard', 'them']
-E_3 = ['She','was','ulreedy','quit','live']
-E_4 = ['John', 'Knightly','wasn’t','hard','at','work']
-E_5 = ['he','said','nit','word','by']
 
 phrase_probs = pd.Series([0] * len(vocab))
 phrase_probs[152] = 1
@@ -62,44 +58,3 @@ phrases = [""] * len(vocab)
 phrases[152] = "<s>"
 
 corrected_E1 = recurse(E_1, phrases, phrase_probs)
-#print(corrected_E1)
-
-corrected_E2 = recurse(E_2, phrases, phrase_probs)
-#print(corrected_E2)
-
-corrected_E3 = recurse(E_3, phrases, phrase_probs)
-#print(corrected_E3)
-
-corrected_E4 = recurse(E_4, phrases, phrase_probs)
-#print(corrected_E4)
-
-corrected_E5 = recurse(E_5, phrases, phrase_probs)
-#print(corrected_E5)
-
-print(corrected_E1)
-print(corrected_E2)
-print(corrected_E3)
-print(corrected_E4)
-print(corrected_E5)
-
-
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'p2_output.txt')
-with open(file_path, "w") as file:
-  file.write(f'{corrected_E1}\n')
-  file.write(f'{corrected_E2}\n')
-  file.write(f'{corrected_E3}\n')
-  file.write(f'{corrected_E4}\n')
-  file.write(f'{corrected_E5}\n')
-
-'''
-1.
-P * E elementwise multiplication
-diagonalize
-multiply by transition matrix
-
-get list of max indexes
-
-each column represents a word
-append the word to the phrase at the max index
-
-'''
