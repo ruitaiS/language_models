@@ -180,17 +180,17 @@ class SHA(nn.Module): # Single Head Attention
         #return input.masked_fill(~autoregression_mask, float('-1e9'))
 
 class LanguageModel(nn.Module):
-    def __init__(self, vocab, d, context_len, num_layers, total_heads):
+    def __init__(self, tokenization, vocab_size, idx2token, token2idx, pad_token, d, context_len, num_layers, total_heads):
         super().__init__()
-        self.xft, self. tfx = vocab
-        self.vocab_size = len(self.xft)
+        self.token2idx, self.idx2token = vocab_mappings
+        self.vocab_size = len(self.token2idx)
         self.context_len = context_len
 
-        self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len, padding_token_index = self.xft['<>'])
+        self.embedding_layer = EmbeddingLayer(d, self.vocab_size, context_len, padding_token_index = self.token2idx['<>'])
         self.transformer_layers = nn.ModuleList([TransformerBlock(d, total_heads) for _ in range(num_layers)])
         self.lm_head = LanguageModelHead(self.embedding_layer.E)
         
-        self.loss_func = nn.CrossEntropyLoss(reduction="mean", ignore_index=self.xft['<>']) # TODO: This needs a test
+        self.loss_func = nn.CrossEntropyLoss(reduction="mean", ignore_index=self.token2idx['<>']) # TODO: This needs a test
 
     def forward(self, token_batch, targets = None):
         # Accepts one batch of tokens of shape (batch_size, seq_len)
@@ -198,12 +198,12 @@ class LanguageModel(nn.Module):
         # shorter sequences preserved
         token_batch = token_batch[:, -self.context_len:]
         #token_batch = np.array(token_batch.tolist()) # Should already be np.array out of the data.batch()
-        #token_batch = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(token_batch)
+        #token_batch = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(token_batch)
         #token_batch = torch.tensor(token_batch, dtype=torch.long)
 
         # View Tokens flowing through:
         #for seq in token_batch:
-        #    view = [self.tfx[token.item()] for token in seq]
+        #    view = [self.idx2token[token.item()] for token in seq]
         #    print(' '.join(view))
         #print('')
 
@@ -216,12 +216,12 @@ class LanguageModel(nn.Module):
         if targets is not None:
             # View Tokens flowing through:
             #for seq in targets:
-            #    view = [self.tfx[token.item()] for token in seq]
+            #    view = [self.idx2token[token.item()] for token in seq]
             #    print(' '.join(view))
             #print('')
 
         #    print(f"Targets Shape: {targets.shape}")
-            #targets = np.vectorize(lambda token: self.xft.get(token, self.xft['<?>']))(targets)
+            #targets = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(targets)
             #targets = torch.tensor(targets, dtype=torch.long)
             loss = self.calculate_loss(logits, targets)
         else:
@@ -263,7 +263,7 @@ class LanguageModel(nn.Module):
             return sample(probabilities)
 
         def batch_to_str(token_batch, display=False):
-            output = [self.tfx[token.item()] for token in token_batch.squeeze(0)]
+            output = [self.idx2token[token.item()] for token in token_batch.squeeze(0)]
             if display: print(' '.join(output))
             return output
 
@@ -274,14 +274,14 @@ class LanguageModel(nn.Module):
 
         # TODO: Fix the need for this ridiculous hotfix
         # Somewhere in input_handler.py
-        while len(prompt) > 0 and prompt[0] == self.xft['<s>']:
+        while len(prompt) > 0 and prompt[0] == self.token2idx['<s>']:
             prompt = prompt[1:]
 
         if len(prompt) < self.context_len:
-            prompt = [self.xft['<s>']] + prompt
+            prompt = [self.token2idx['<s>']] + prompt
         prompt = prompt[:self.context_len]
-        token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - len(prompt)) + prompt])
-        #token_batch = torch.tensor([[self.xft['<>']]*(self.context_len - 1) + [self.xft['<s>']]])
+        token_batch = torch.tensor([[self.token2idx['<>']]*(self.context_len - len(prompt)) + prompt])
+        #token_batch = torch.tensor([[self.token2idx['<>']]*(self.context_len - 1) + [self.token2idx['<s>']]])
         generated_length = 0
         #batch_to_str(token_batch, display=True)
         while generated_length <= response_length:
@@ -289,7 +289,7 @@ class LanguageModel(nn.Module):
             #token_batch = sample(F.softmax(logits, dim = -1)) # batch_size, seq_len)
             # print(f"Returned shape: {token_batch.shape}")
             next = next_token(token_batch)
-            if next == self.xft['</s>']:
+            if next == self.token2idx['</s>']:
                 break;
             token_batch = torch.cat((token_batch, next), dim=1)
             #batch_to_str(token_batch, display=True)

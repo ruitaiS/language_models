@@ -203,7 +203,7 @@ def load_rnn_model(filepath, optimizer=None):
     optimizer.load_state_dict(checkpoint['optimizer_state'])
     return model, optimizer
 
-def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0):
+def next_token_idx(model, token_idx, hidden, top_k=None, temperature=1.0): # TODO: Confirm only called by sample, and move there
     model.eval()
     h, c = hidden
     hidden = (h.detach(), c.detach())
