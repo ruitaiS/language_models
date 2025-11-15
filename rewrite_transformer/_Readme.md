@@ -26,15 +26,16 @@ the dumb way (the way i did it before lol) would be to pre-calculate all the pos
 
 >> the phrase "unnecessarily redundant" is itself unnecessarily redundant :))
 
-assuming each line starts with the start token, and ends with the end token, and we're sliding the context windows with stride length 1, you get len(line) - 1 possible context window `x, y` pairs from each line.
+assuming each line starts with the start token, and ends with the end token, and we're sliding the context windows with stride length 1, you get `len(line) - 1` possible context window `x, y` pairs from each line.
 
-say each line is [<s>, t1, t2, ... tn, </s>] >> the last element of x would slide from `<s>` to `tn`, and the last element of y would slide from `t1` to `</s>`. the rest of the context window is filled from preceeding elements from the line or left-padded with the pad token.
+say each line is `[<s>, t1, t2, ... tn, </s>]`
+the last element of x would slide from `<s>` to `tn`, and the last element of y would slide from `t1` to `</s>`. the rest of the context window is filled from preceeding elements from the line or left-padded with the pad token.
 
->> stride > 1 complicates the math, makes line endings messier since line length isn't guaranteed to be evenly divisible by stride, meaning you'll frequently need to right pad the last example, and you're generally just leaving training examples on the table for no reason (our dataset is small enough as-is that we're not time constrained to the point of needing to drop any. even if we really did need to drop training instances, we could just do that downstream of dataset indexing). soooo.. let's not do that
+>> `stride > 1` complicates the math, makes line endings messier since line length isn't guaranteed to be evenly divisible by stride, meaning you'll frequently need to right pad the last example, and you're generally just leaving training examples on the table for no reason (our dataset is small enough as-is that we're not time constrained to the point of needing to drop any. even if we really did need to drop training instances, we could just do that downstream of dataset indexing). soooo.. let's not do that
 
 for `getitem`, we're given an arbitrary context window index (of all the possible context windows which can be generated), and we need to quickly identify which line to slice from, and which index on that line to slice.
 
-we keep a len(lines) list, where the `ith` element on the list contains the last `idx` where `getitem(idx)` needs to pull from the ith line. 
+we keep a `len(lines)` list, where the `ith` element on the list contains the last `idx` where `getitem(idx)` needs to pull from the ith line. 
 
 then we can do a binary search over this list to find which line we want (eg. largest i where `list[i] >= idx`). once we know which line we want to slice from, we can subtract `idx - list[i-1]` to know which position in the current line we need to stop on, and build the context window from there.
 
