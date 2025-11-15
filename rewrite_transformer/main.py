@@ -1,23 +1,21 @@
 import os
 import pandas as pd
 import numpy as np
-import math
-import Levenshtein
-from tokenizer import tokenize
+
 import data
 from model_handler import load_model
 
-model_name = 'trigram_imitation'
-model_data = load_model(model_name)
-xft, tfx = model_data['vocab']
-context_len = model_data['params']['context_len']
-vocab_size = len(xft)
-print(f"Vocab Size: {vocab_size}")
+#model_name = 'trigram_imitation'
+#model_data = load_model(model_name)
+#context_len = model_data['params']['context_len']
+
+tokenization='char'
+vocab_size, idx2token, token2idx = data.build_vocab(tokenization)
 
 print("To exit, type 'q!' or 'quit', or press CTRL-C\n")
 while True:
     try:
-        raw_input = input(">> User Input: ")
+        raw_input = input(">> User Prompt: ")
     except:
         print("\nExiting..")
         break
@@ -25,15 +23,20 @@ while True:
     if raw_input.lower() in ['q!', 'quit']:
         break
     else:
-        prompt_tokens = utils.tokenize(raw_input)
-        prompt_indices = [1] + [token2idx.get(token, 0) for token in prompt_tokens]
-        reconstructed = [idx2token.get(idx, "()") for idx in prompt_indices]
+        prompt_tokens = data.tokenize(raw_input, tokenization)
+        prompt_indices = [token2idx.get(token, 0) for token in prompt_tokens]
 
-        print(f"Tokenized Input: {prompt_tokens}")
-        print(f"Input Token Indices: {prompt_indices}")
-        print(f"Reconstructed: {reconstructed}")
+        if tokenization=='char':
+            delimiter = ''
+        else:
+            delimiter = ' '
+        reconstructed = delimiter.join([idx2token.get(idx, "<?>") for idx in prompt_indices])
+
+        print(f"\nTokenized Prompt: {prompt_tokens}")
+        print(f"Prompt Token Indices: {prompt_indices}")
+        print(f"Reconstructed Prompt: {reconstructed}\n")
         
-        print(f"\nGenerated Text:")
+        #print(f"\nGenerated Text:")
 
         #model = model_data['core']
         #output = model.generate(user_prompt, response_length = 100)

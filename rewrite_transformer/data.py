@@ -1,35 +1,76 @@
 import os
+from itertools import accumulate
 import torch
-import math
-import pandas as pd
+from torch.utils.data import Dataset
 from nltk.corpus import brown
 from nltk.tokenize import RegexpTokenizer
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
-# TODO: Pretty sure i'm just going with char tokenization again b/c it's easier
-def tokenize(text):
-    tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
-    words = tokenizer.tokenize(text)
-    return words
+def tokenize(text, tokenization='char'):
+    assert tokenization in ('char', 'word', 'bpe'), (
+    f"tokenization must be 'char', 'word', or 'bpe' - got {tokenization}")
 
-def build_vocab():
-    dataset_tokens = []
+    if tokenization == 'word':
+        tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
+        words = tokenizer.tokenize(text)
+        return words
+    elif tokenization == 'char':
+        return list(text)
+    else: # tokenization == 'bpe'
+        print("TODO: BPE")
+        return None
+
+def build_vocab(tokenization='char'):
+    print(f"Building vocabulary using {tokenization} tokenization...")
+    vocab = set()
     for fileid in brown.fileids():
-        text = brown.raw(fileid)
-        tokens = tokenize(text)
-        dataset_tokens.extend(tokens)
-    vocab = sorted(set(token for token in dataset_tokens))
+        tokens = tokenize(brown.raw(fileid), tokenization)
+        vocab.update(tokens)
+    vocab = sorted(vocab)
 
     vocab.insert(0, '<?>') # out of dictionary token
     vocab.insert(1, '<s>') # start token
-    #vocab.insert(2, '</s>') # end token
-    #vocab.insert(3, '<>') # pad token
+    vocab.insert(2, '</s>') # end token
+    vocab.insert(3, '<>') # pad token
 
     vocab_size = len(vocab)
     idx2token = dict(enumerate(vocab))
     token2idx = {word:i for i, word in idx2token.items()}
+    print(f"Finished, with final vocabulary size: {vocab_size}\n")
     return vocab_size, idx2token, token2idx
+
+# TODO: Split into lines and Encode to token idx's upstream of this
+# TODO: Each line must be bracketed with start_token '<s>' and end_token '</s>'
+# TODO: Batching logic occurs downstream
+class TransformerDataset(Dataset):
+    def __init__(self, encoded_lines, context_len,
+                 start_token_idx=1, end_token_idx=2, pad_token_idx=3):
+        assert len(encoded_lines) >= 1 and context_len >= 1
+        assert all(
+            len(line) > 2 and
+            line[0] == start_token_idx and
+            line[-1] == end_token_idx
+            for line in encoded_lines
+        )
+
+        self.lines = encoded_lines
+        self.context_len = context_len
+        self.pad_token_idx = pad_token_idx
+
+        # Don't think i actually need these two other than for verification
+        #self.start_token_idx = start_token_idx
+        #self.end_token_idx = end_token_idx
+
+        counts = [len(line)-1 for line in self.lines]
+        self.cumulative_counts = list(accumulate(counts))
+
+
+    def __getitem__(self, idx):
+        return None # TODO; see notes in readme
+
+    def __len__(self):
+        return self.cumulative_counts[-1]
 
 def batch(batch_size, context_len, dataset, shuffle=True):
     xft, _ = extract_aux(dataset)['vocab']

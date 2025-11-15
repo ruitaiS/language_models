@@ -7,8 +7,11 @@ from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
 import data
-from modules import LanguageModel
+from transformer import LanguageModel
 base_path = os.path.dirname(os.path.abspath(__file__))
+
+# TODO
+# def save_model():
 
 def train_model(model_name,
                 dataset_id,

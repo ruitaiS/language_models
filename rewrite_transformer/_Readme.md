@@ -1,4 +1,4 @@
-TODOs:
+### TODOs:
 
 tokenizer concerns (tokenization schema, idx2token and token2idx) should be kept seperate from the model
 
@@ -10,3 +10,32 @@ model really only needs to know vocab size, and indices for special tokens, eg. 
 
 training / loss concerns should also be it's own module; should not be packaged in the model. model should only have a forward function >> should NOT contain optimizer / loss functions
 
+for RNN, `init_hidden` is a legit part of the model >> we want to be able to call it during training to reset the hidden state, and we also want the flexibility to define batch size / device from within the training function, rather than cement it into the model definition
+
+### regarding building the vocab from the full text:
+
+in one of the writeups (i think the rough draft for the bible rnn) i mentioned feeling guilty because i'd used the full text corpus to create the vocab rather than restricting the vocabulary to words in the training set & handling out of vocab words at validation/test time, but it turns out this is actually common practice even in production LLMs; nobody else wants to deal with OoV either. So basically i'm not wrong and everyone agrees with me >:)
+
+from my understanding it's b/c out of vocab words are an unavoidable source of error caused by the distribution of rare words in the dataset, rather than the result of anything that can be addressed through training. vocabulary building and model training are seperate processes; knowing which words exist doesn't actually leak any exploitable information to the model.
+
+i'd compare it to defining ahead of time an exhaustive list of the possible output categories for a classification problem - not doing so would be like training a cat / dog classifier and then dinging the model because there's randomly a fish in the test set, yk?
+
+### efficiently extracting context windows from the dataset
+
+the dumb way (the way i did it before lol) would be to pre-calculate all the possible context window examples that you can make from the dataset, and just store them. the reason it's tremendously dumb is b/c the context windows overlap so you're storing massively and unnecessarily redundant data.
+
+>> the phrase "unnecessarily redundant" is itself unnecessarily redundant :))
+
+assuming each line starts with the start token, and ends with the end token, and we're sliding the context windows with stride length 1, you get len(line) - 1 possible context window `x, y` pairs from each line.
+
+say each line is [<s>, t1, t2, ... tn, </s>] >> the last element of x would slide from `<s>` to `tn`, and the last element of y would slide from `t1` to `</s>`. the rest of the context window is filled from preceeding elements from the line or left-padded with the pad token.
+
+>> stride > 1 complicates the math, makes line endings messier since line length isn't guaranteed to be evenly divisible by stride, meaning you'll frequently need to right pad the last example, and you're generally just leaving training examples on the table for no reason (our dataset is small enough as-is that we're not time constrained to the point of needing to drop any. even if we really did need to drop training instances, we could just do that downstream of dataset indexing). soooo.. let's not do that
+
+for `getitem`, we're given an arbitrary context window index (of all the possible context windows which can be generated), and we need to quickly identify which line to slice from, and which index on that line to slice.
+
+we keep a len(lines) list, where the `ith` element on the list contains the last `idx` where `getitem(idx)` needs to pull from the ith line. 
+
+then we can do a binary search over this list to find which line we want (eg. largest i where `list[i] >= idx`). once we know which line we want to slice from, we can subtract `idx - list[i-1]` to know which position in the current line we need to stop on, and build the context window from there.
+
+>> why tf am i using the royal we? whatever
