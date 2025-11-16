@@ -40,3 +40,14 @@ we keep a `len(lines)` list, where the `ith` element on the list contains the la
 then we can do a binary search over this list to find which line we want (eg. largest i where `list[i] >= idx`). once we know which line we want to slice from, we can subtract `idx - list[i-1]` to know which position in the current line we need to stop on, and build the context window from there.
 
 >> why tf am i using the royal we? whatever
+
+### manual assignment of special token indices
+
+```
+vocab.insert(0, '<?>') # out of dictionary token
+vocab.insert(1, '<s>') # start token
+vocab.insert(2, '</s>') # end token
+vocab.insert(3, '<>') # pad token
+```
+
+feels slightly naughty to globally hardcode these tokens to these indices, but... i'm going to do it anyway

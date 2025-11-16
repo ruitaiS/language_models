@@ -1,33 +1,53 @@
 import os
+import re
 from itertools import accumulate
 import torch
 from torch.utils.data import Dataset
-from nltk.corpus import brown
 from nltk.tokenize import RegexpTokenizer
 
+#import nltk
+#from nltk import sent_tokenize
+#from nltk.corpus import brown
+#nltk.data.path.append(os.path.dirname(os.path.dirname(__file__)))
 base_path = os.path.dirname(os.path.abspath(__file__))
 
+def preprocess_akjv(include_book=True):
+    source_filepath = os.path.join('..', 'datasets', 'akjv.txt')
+    # utf-8-sig strips leading BOM char
+    with open(source_filepath, encoding="utf-8-sig") as f:
+        lines = f.readlines()
+    lines = [line.strip() for line in lines if line.strip()]
+
+
+    pattern = re.compile(r'^\s*(?P<book>.+?)\s+(?P<chapter>\d+):(?P<verse>\d+)\s+(?P<text>.+?)\s*$')
+    processed_lines = []
+    for line in lines:
+        match = pattern.match(line)
+        if not match:
+            print(f"Line '{line}' discarded")
+            continue
+        if include_book:
+            processed = f"{match['book']}\t{match['text']}"
+        else:
+            processed = f"{match['text']}"
+        processed_lines.append(processed)
+    full_text_str = "".join(processed_lines)
+    return processed_lines, full_text_str
+
 def tokenize(text, tokenization='char'):
-    assert tokenization in ('char', 'word', 'bpe'), (
-    f"tokenization must be 'char', 'word', or 'bpe' - got {tokenization}")
+    assert tokenization in ('char', 'word'), (
+    f"tokenization must be 'char' or 'word' - got {tokenization}")
 
     if tokenization == 'word':
         tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         words = tokenizer.tokenize(text)
         return words
-    elif tokenization == 'char':
+    else: # tokenization == 'char'
         return list(text)
-    else: # tokenization == 'bpe'
-        print("TODO: BPE")
-        return None
 
-def build_vocab(tokenization='char'):
+def build_and_encode(lines, full_text_str, tokenization='char'):
     print(f"Building vocabulary using {tokenization} tokenization...")
-    vocab = set()
-    for fileid in brown.fileids():
-        tokens = tokenize(brown.raw(fileid), tokenization)
-        vocab.update(tokens)
-    vocab = sorted(vocab)
+    vocab = sorted(set(tokenize(full_text_str, tokenization)))
 
     vocab.insert(0, '<?>') # out of dictionary token
     vocab.insert(1, '<s>') # start token
@@ -37,8 +57,16 @@ def build_vocab(tokenization='char'):
     vocab_size = len(vocab)
     idx2token = dict(enumerate(vocab))
     token2idx = {word:i for i, word in idx2token.items()}
-    print(f"Finished, with final vocabulary size: {vocab_size}\n")
-    return vocab_size, idx2token, token2idx
+    print(f"Final vocabulary size: {vocab_size}\n")
+
+    print("Encoding Lines...")
+    encoded_lines = []
+    for line in lines:
+        tokens = tokenize(line, tokenization)
+        encoded = [token2idx.get(token, 0) for token in tokens]
+        encoded_lines.append([1] + encoded + [2])
+    print(f"Finished encoding {len(encoded_lines)} lines\n")
+    return encoded_lines, vocab_size, idx2token, token2idx
 
 # TODO: Split into lines and Encode to token idx's upstream of this
 # TODO: Each line must be bracketed with start_token '<s>' and end_token '</s>'

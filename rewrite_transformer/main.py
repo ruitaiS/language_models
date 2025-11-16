@@ -10,7 +10,16 @@ from model_handler import load_model
 #context_len = model_data['params']['context_len']
 
 tokenization='char'
-vocab_size, idx2token, token2idx = data.build_vocab(tokenization)
+include_book=True
+if tokenization=='char':
+    delimiter = ''
+else:
+    delimiter = ' '
+
+processed_lines, full_text_str = data.preprocess_akjv(include_book)
+encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, full_text_str, tokenization)
+print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
+print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
 
 print("To exit, type 'q!' or 'quit', or press CTRL-C\n")
 while True:
@@ -25,11 +34,6 @@ while True:
     else:
         prompt_tokens = data.tokenize(raw_input, tokenization)
         prompt_indices = [token2idx.get(token, 0) for token in prompt_tokens]
-
-        if tokenization=='char':
-            delimiter = ''
-        else:
-            delimiter = ' '
         reconstructed = delimiter.join([idx2token.get(idx, "<?>") for idx in prompt_indices])
 
         print(f"\nTokenized Prompt: {prompt_tokens}")
