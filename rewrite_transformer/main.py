@@ -16,8 +16,8 @@ if tokenization=='char':
 else:
     delimiter = ' '
 
-processed_lines, full_text_str = data.preprocess_akjv(include_book)
-encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, full_text_str, tokenization)
+processed_lines = data.preprocess_akjv(include_book)
+encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
 print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
 print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
 

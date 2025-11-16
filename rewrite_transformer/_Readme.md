@@ -51,3 +51,25 @@ vocab.insert(3, '<>') # pad token
 ```
 
 feels slightly naughty to globally hardcode these tokens to these indices, but... i'm going to do it anyway
+
+### Preprocessing AKJV
+
+The new `preprocess_akjv`, `tokenize`, and `build_and_encode` has several improvements over than the RNN version. Specifically:
+- no need for pandas dataframes
+- for book-less version, strips out `\t` and `\n`; for book-included version, removes angle brackets around book title and the trailing `\n`
+- Doesn't use weird special tokens or inconsistent start/end tokens;explicitly bounds each line with `<s>` and `</s>` for both booked and bookless
+- places the special tokens at the start of the vocab, at known and easy to remember indices
+
+>> should be close to a drop-in replacement for the RNN model
+
+>> afaik the preprocessing / vocab building / encoding / dataset creation step is always performed whether you're training or loading and running inference. consider putting it in a class or a wrapper function (rn you have several lines of duplicate code on `main.py` and `train.py`, and if you tweak any of the function parameters you need to reflect the changes in both files). but for now don't worry about it too much - build everything out first and then decide what needs to be consolidated later.
+
+### Training / Validation Loaders
+
+`make_dataloader` in `rnn/utils.py` is convoluted. Really what you want to do is to create one RnnDataset object with all your data, and then use `torch.utils.data.random_split(dataset, [# of training instances, # of validation instances])` to create a `train_dataset` and `validation_dataset`
+
+then pass each of those into Dataloader to make the loaders.
+
+in the existing code you're kind of manually shuffling and selecting the split index and idk it gets super messy
+
+definitely revisit the RNN version because padding out each batch to match the longest sequence increases the complexity. Luckily for transformers, the padding happens inside `TransformerDataset` at `getitem` time, so we don't need to do anything special with the loader

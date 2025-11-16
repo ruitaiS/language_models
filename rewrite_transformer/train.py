@@ -1,3 +1,4 @@
+import data
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
@@ -75,11 +76,24 @@ def train_model(model_name,
 
 
 
-train_model(model_name = 'trigram_imitation'
+'''train_model(model_name = 'trigram_imitation'
 dataset_id = 1741140596
 batch_size = 16
 context_len = 3
 embedding_depth = 8
 num_layers = 6
 total_heads = 1
-masked = True)
+masked = True)'''
+
+tokenization='char'
+include_book=True
+if tokenization=='char':
+    delimiter = ''
+else:
+    delimiter = ' '
+
+processed_lines= data.preprocess_akjv(include_book)
+encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
+
+print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
+print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")

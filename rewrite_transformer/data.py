@@ -31,8 +31,7 @@ def preprocess_akjv(include_book=True):
         else:
             processed = f"{match['text']}"
         processed_lines.append(processed)
-    full_text_str = "".join(processed_lines)
-    return processed_lines, full_text_str
+    return processed_lines
 
 def tokenize(text, tokenization='char'):
     assert tokenization in ('char', 'word'), (
@@ -45,9 +44,9 @@ def tokenize(text, tokenization='char'):
     else: # tokenization == 'char'
         return list(text)
 
-def build_and_encode(lines, full_text_str, tokenization='char'):
+def build_and_encode(lines, tokenization='char'):
     print(f"Building vocabulary using {tokenization} tokenization...")
-    vocab = sorted(set(tokenize(full_text_str, tokenization)))
+    vocab = sorted(set(tokenize("".join(lines), tokenization)))
 
     vocab.insert(0, '<?>') # out of dictionary token
     vocab.insert(1, '<s>') # start token
