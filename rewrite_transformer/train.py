@@ -85,6 +85,9 @@ num_layers = 6
 total_heads = 1
 masked = True)'''
 
+# Hyperparameters:
+context_len = 50 # used by 
+
 tokenization='char'
 include_book=True
 if tokenization=='char':
@@ -94,6 +97,7 @@ else:
 
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
+akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 
 print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
 print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
