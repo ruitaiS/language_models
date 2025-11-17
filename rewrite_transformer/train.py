@@ -102,22 +102,5 @@ akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 
 print(f"Dataset length: {len(akjv_dataset)}")
 
-try:
-    for i in range(len(akjv_dataset)):
-        akjv_dataset[i]
-        print("\033[16A", end="")
-        time.sleep(0.2)
-except KeyboardInterrupt:
-    pass
-finally:
-    os.system('clear')
-
-
-'''print(f"dataset[62]: {akjv_dataset[62]}")
-print(f"dataset[63]: {akjv_dataset[63]}")
-print(f"dataset[64]: {akjv_dataset[64]}")
-print(f"dataset[-1]: {akjv_dataset[len(akjv_dataset)-1]}")'''
-
-
 #print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
 #print(f"Sample Line Reconstructed:\n{''.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")

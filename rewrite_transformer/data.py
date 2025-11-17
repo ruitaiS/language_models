@@ -109,21 +109,6 @@ class TransformerDataset(Dataset):
         x = [self.pad_token_idx]*pad_x + self.lines[line_idx][x_i:x_f]
         y = [self.pad_token_idx]*pad_y + self.lines[line_idx][y_i:y_f]
 
-        #print(f"\nself.context_len: {self.context_len}")
-        os.system('clear')
-        print(f"idx: {idx}")
-        print(f"line_idx: {line_idx}")
-        print(f"len(line)-1: {len(self.lines[line_idx])-1}")
-        print(f"p_0: {p_0}")
-        print(f"x_i: {x_i}")
-        print(f"x_f: {x_f}")
-        print(f"y_i: {y_i}")
-        print(f"y_f: {y_f}")
-        print(f"len(x): {len(x)}")
-        print(f"len(y): {len(y)}")
-        print(f"x: {x}")
-        print(f"y: {y}")
-
         return x, y
 
     def __len__(self):
