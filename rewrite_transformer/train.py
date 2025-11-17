@@ -82,6 +82,7 @@ def train_model(model_name,
 #def reconstruct(idx2token, delimiter, token_idxs):
 #   return delimiter.join([idx2token.get(idx, '<?>') for idx in token_idxs])
 
+# Old Transformer Params:
 '''train_model(model_name = 'trigram_imitation'
 dataset_id = 1741140596
 batch_size = 16
@@ -91,9 +92,44 @@ num_layers = 6
 total_heads = 1
 masked = True)'''
 
+#RNN Params Copied from rnn/train.py:
+'''
+# parameters ----------------------------------------------
+# model:
+embedding_dim = 64
+hidden_dim = 512
+lstm_layers = 3
+embedding_dropout = 0.15
+lstm_dropout = 0.3
+fc_dropout = 0.3
+lr = 0.001
+#betas=(0.9, 0.95)
+#weight_decay=0.01
+
+# batching:
+batch_size = 50
+seq_len = 100
+validation_p = 0.1
+tokenization='char'
+include_book=True
+shuffle = True
+style='encoded_lines'
+pad_token='<>'
+
+# training:
+reset_each = 'batch' # epoch
+clip_grad=1
+epochs = 30
+resume_from = 20
+use_gpu = False
+'''
+
 # Hyperparameters:
 context_len = 100
+batch_size = 50
 validation_p = 0.1
+shuffle=True
+drop_last=True
 tokenization='char'
 include_book=True
 
@@ -110,4 +146,21 @@ train_set, val_set = torch.utils.data.random_split(akjv_dataset, [train_size, va
 print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {validation_p}")
 print(f"Training Set Size: {len(train_set)}")
 print(f"Validation Set Size: {len(val_set)}")
-print(f"Sum: {len(train_set) + len(val_set)}")
+print(f"Sum: {len(train_set) + len(val_set)}\n")
+
+
+
+train_loader = torch.utils.data.DataLoader(
+    train_set,
+    batch_size=batch_size,
+    shuffle=shuffle,
+    drop_last=drop_last)
+val_loader = torch.utils.data.DataLoader(
+    val_set,
+    batch_size=batch_size,
+    shuffle=shuffle,
+    drop_last=drop_last)
+
+print(f"Batch Size: {batch_size} || Drop Last Incomplete Batch: {drop_last}")
+print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
+print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}")
