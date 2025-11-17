@@ -90,7 +90,6 @@ class TransformerDataset(Dataset):
         self.cumulative_counts = list(accumulate(counts))
         #print(self.cumulative_counts)
 
-
     def __getitem__(self, idx):
         assert (idx >=0 and idx < self.cumulative_counts[-1])
 

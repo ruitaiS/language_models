@@ -2,6 +2,7 @@ import os
 import time
 
 import data
+import torch
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
@@ -91,16 +92,22 @@ total_heads = 1
 masked = True)'''
 
 # Hyperparameters:
-context_len = 15 
-
+context_len = 100
+validation_p = 0.1
 tokenization='char'
 include_book=True
 
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
+print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
+print(f"Sample Line Reconstructed:\n{''.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
+
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
+val_size = int(len(akjv_dataset) * validation_p)
+train_size = len(akjv_dataset) - val_size
+train_set, val_set = torch.utils.data.random_split(akjv_dataset, [train_size, val_size])
 
-print(f"Dataset length: {len(akjv_dataset)}")
-
-#print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
-#print(f"Sample Line Reconstructed:\n{''.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
+print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {validation_p}")
+print(f"Training Set Size: {len(train_set)}")
+print(f"Validation Set Size: {len(val_set)}")
+print(f"Sum: {len(train_set) + len(val_set)}")
