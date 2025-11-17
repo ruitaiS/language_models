@@ -1,3 +1,6 @@
+import os
+import time
+
 import data
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
@@ -74,7 +77,9 @@ def train_model(model_name,
 
     return model
 
-
+# TODO: move or delete after testing
+#def reconstruct(idx2token, delimiter, token_idxs):
+#   return delimiter.join([idx2token.get(idx, '<?>') for idx in token_idxs])
 
 '''train_model(model_name = 'trigram_imitation'
 dataset_id = 1741140596
@@ -86,25 +91,33 @@ total_heads = 1
 masked = True)'''
 
 # Hyperparameters:
-context_len = 50 # used by 
+context_len = 15 
 
 tokenization='char'
 include_book=True
-if tokenization=='char':
-    delimiter = ''
-else:
-    delimiter = ' '
 
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 
 print(f"Dataset length: {len(akjv_dataset)}")
-print(f"dataset[0]: {akjv_dataset[0]}")
-print(f"dataset[1]: {akjv_dataset[1]}")
-print(f"dataset[-1]: {akjv_dataset[-1]}")
-print(f"dataset[len]: {akjv_dataset[len(akjv_dataset)]}")
+
+try:
+    for i in range(len(akjv_dataset)):
+        akjv_dataset[i]
+        print("\033[16A", end="")
+        time.sleep(0.2)
+except KeyboardInterrupt:
+    pass
+finally:
+    os.system('clear')
+
+
+'''print(f"dataset[62]: {akjv_dataset[62]}")
+print(f"dataset[63]: {akjv_dataset[63]}")
+print(f"dataset[64]: {akjv_dataset[64]}")
+print(f"dataset[-1]: {akjv_dataset[len(akjv_dataset)-1]}")'''
 
 
 #print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
-#print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
+#print(f"Sample Line Reconstructed:\n{''.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")

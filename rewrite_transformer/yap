@@ -102,3 +102,67 @@ the rnn one you have now definitely looks super technical and complicated but wt
 it's also definitely not this complicated; you're really just doing `candidate scores, updated hidden = model(last selected, last hidden)` a bunch of times. the generated graph shows all the tensor math because it's too dumb to know it's irrelevant, but it also doesn't show the recurrence relationship at all, so you have way too much detail on stuff that doesn't matter and zero detail about the most important part.
 
 just draw a flowchart going down through all the layers (including dimensions or parameters would be a nice touch) and then an arrow that splits off and loops back up to update the internal states. don't need to get super fancy with it
+
+### tokenization
+
+it's occurred to me that I actually have very little understanding of what tokenization even is. I thought it was a very simple task of encoding the words into integers, but it's a lot deeper than that.
+
+---
+
+first of all, i only realized today you can just keep the whitespace when you do word tokenization. i was splitting on whitespace and re-inserting spaces at output time by doing `' '.join(...)` but like.. just capture the whitespace itself as a token, dummy
+
+solves also the issue with handling whitespace around punctuation - before "Hello?" turns into `"Hello ?"` and `"You're annoying."` turns into `"You ' re annoying ."` and i wasn't sure how to address this elegantly without manually encoding punctuation rules wrt to spacing - how we just keep the spacing faithful to the original.
+
+---
+
+apparently other tokenizers will include whitespace as part of their byte pairs. Something to explore and play around with - rn i have a little trouble reasoning about how this words across the entire corpus
+
+https://tiktokenizer.vercel.app/
+
+it views variations of the same string (eg. "egg" vs "Egg" vs " egg") as different tokens in the vocab. are you trading an increase in vocab / embedding space size for increased specificity in the model? eg. it would know the token "Egg" would be for the start of sentences, while " egg" would be in the middle, and "egg" might be, idk, used in between quotation marks?
+
+---
+BPE is actually a recursive compression algorithm that creates new vocab indices to represent pairs of co-occurring elements, stopping when every pair occurs only once, sooooo basically it's actually *learned* over the input corpus - it's not a fixed substring vocabulary that you're pulling down from somewhere. so.. idk man. going back to the part of building the vocab over the text - doesn't this mean.. you do be leaking data? idk man idk. pretty dubious. preeetty preetty dubious
+
+---
+
+oh hang on.. are you supposed to just.. build a vocabulary, and then spell out the remaining non-vocabulary words using character encodings? dude i might be retarded. there's so many embarassingly obvious solutions that i miss.
+
+w/e. ok so higher level tokenization, whether its BPE or word tokenization, builds on top of a character level vocabulary; they're supersets, not a replacement of it. so you're never actually hitting out of vocab since you can just spell it out.
+
+you also need to think about the tokenizer space as equivalent to all utf encodable characters, and basically make use of the existing utf character to integer encodings, rather than create your own based on your LM text. this is sort of why your misunderstanding of how to handle out of vocabulary words is a little misguided - bc before (eg the ecse assignment) you have a finite vocabulary, but tokenizers in general need to address the entire utf space. so "out of vocabulary" will never happen.
+
+right now what you've got going on is ok, but just be aware this isn't how it's generally done. after the transformer / rnn models are done, a proper tokenizer implementation would be fun if you want to go deeper into this, but definitely not high priority.
+
+
+### stuff to read / watch:
+
+kaparthy talks through tokenizers
+https://www.youtube.com/watch?v=zduSFxRajkE
+
+- `ord(x)` turns character into utf integer
+- `chr(int)` turns integer back into character
+- `tokens.decode("utf-8", errors="replace")` standard way to address issues caused by an id that doesn't properly conform to utf standard (eg. 128)
+- gpt4 uses 100k token vocab
+- when doing bpe, you generally want to set a hyperparameter for the vocab size at which to stop iterating (for max compression you'd want to do it all the way until there aren't any more repeating pairs, but your vocab size would be massive)
+
+
+i find it really admirable how low level Kaparthy is willing to get with these videos, considering how influential he is. He's talking through a BPE implementation line by line in raw python; this is like a leetcode medium in terms of difficulty. This is like Elon Musk making a video series patiently explaining how electric motors work.
+
+gpt-2 tokenizer source code:
+https://github.com/openai/gpt-2/blob/master/src/encoder.py
+
+
+
+https://tiktokenizer.vercel.app/
+play around with different tokenizers
+
+https://en.wikipedia.org/wiki/Byte-pair_encoding
+https://huggingface.co/learn/llm-course/en/chapter6/5
+how BPE works
+
+https://en.wikipedia.org/wiki/Unicode
+https://en.wikipedia.org/wiki/UTF-8
+
+https://www.youtube.com/watch?v=0VLAoVGf_74
+on deepseek's Multi-head latent attention (improvement in representation efficiency over traditional transformers)

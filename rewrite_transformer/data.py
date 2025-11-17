@@ -1,6 +1,6 @@
 import os
 import re
-from bisect import bisect_left
+from bisect import bisect_right
 from itertools import accumulate
 import torch
 from torch.utils.data import Dataset
@@ -39,9 +39,9 @@ def tokenize(text, tokenization='char'):
     f"tokenization must be 'char' or 'word' - got {tokenization}")
 
     if tokenization == 'word':
-        tokenizer = RegexpTokenizer(r"<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
-        words = tokenizer.tokenize(text)
-        return words
+        tokenizer = RegexpTokenizer(r"\s+|<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
+        tokens = tokenizer.tokenize(text)
+        return tokens
     else: # tokenization == 'char'
         return list(text)
 
@@ -92,10 +92,12 @@ class TransformerDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        line_idx = bisect_left(self.cumulative_counts, idx)
+        assert (idx >=0 and idx < self.cumulative_counts[-1])
+
+        line_idx = bisect_right(self.cumulative_counts, idx)
         p_0 = self.cumulative_counts[line_idx-1] if line_idx > 0 else 0
 
-        x_f = idx - p_0
+        x_f = idx - p_0 + 1 # +1 because slices don't include last index
         y_f = x_f + 1
 
         x_i = max(x_f - self.context_len, 0)
@@ -104,19 +106,23 @@ class TransformerDataset(Dataset):
         pad_x = max(self.context_len - x_f,0)
         pad_y = max(self.context_len - y_f,0)
 
-        x = [self.pad_token_idx]*pad_x + self.lines[line_idx][x_i:x_f+1] # +1 b/c the end slice index elment is not included
-        y = [self.pad_token_idx]*pad_y + self.lines[line_idx][y_i:y_f+1]
+        x = [self.pad_token_idx]*pad_x + self.lines[line_idx][x_i:x_f]
+        y = [self.pad_token_idx]*pad_y + self.lines[line_idx][y_i:y_f]
 
-        print(f"\nself.context_len: {self.context_len}")
+        #print(f"\nself.context_len: {self.context_len}")
+        os.system('clear')
         print(f"idx: {idx}")
         print(f"line_idx: {line_idx}")
+        print(f"len(line)-1: {len(self.lines[line_idx])-1}")
         print(f"p_0: {p_0}")
         print(f"x_i: {x_i}")
         print(f"x_f: {x_f}")
         print(f"y_i: {y_i}")
         print(f"y_f: {y_f}")
         print(f"len(x): {len(x)}")
-        print(f"len(y): {len(y)}\n")
+        print(f"len(y): {len(y)}")
+        print(f"x: {x}")
+        print(f"y: {y}")
 
         return x, y
 
