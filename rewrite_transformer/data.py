@@ -1,5 +1,6 @@
 import os
 import re
+from bisect import bisect_left
 from itertools import accumulate
 import torch
 from torch.utils.data import Dataset
@@ -85,16 +86,39 @@ class TransformerDataset(Dataset):
         self.context_len = context_len
         self.pad_token_idx = pad_token_idx
 
-        # Don't think i actually need these two other than for verification
-        #self.start_token_idx = start_token_idx
-        #self.end_token_idx = end_token_idx
-
         counts = [len(line)-1 for line in self.lines]
         self.cumulative_counts = list(accumulate(counts))
+        #print(self.cumulative_counts)
 
 
     def __getitem__(self, idx):
-        return None # TODO; see notes in readme
+        line_idx = bisect_left(self.cumulative_counts, idx)
+        p_0 = self.cumulative_counts[line_idx-1] if line_idx > 0 else 0
+
+        x_f = idx - p_0
+        y_f = x_f + 1
+
+        x_i = max(x_f - self.context_len, 0)
+        y_i = max(y_f - self.context_len, 0)
+
+        pad_x = max(self.context_len - x_f,0)
+        pad_y = max(self.context_len - y_f,0)
+
+        x = [self.pad_token_idx]*pad_x + self.lines[line_idx][x_i:x_f+1] # +1 b/c the end slice index elment is not included
+        y = [self.pad_token_idx]*pad_y + self.lines[line_idx][y_i:y_f+1]
+
+        print(f"\nself.context_len: {self.context_len}")
+        print(f"idx: {idx}")
+        print(f"line_idx: {line_idx}")
+        print(f"p_0: {p_0}")
+        print(f"x_i: {x_i}")
+        print(f"x_f: {x_f}")
+        print(f"y_i: {y_i}")
+        print(f"y_f: {y_f}")
+        print(f"len(x): {len(x)}")
+        print(f"len(y): {len(y)}\n")
+
+        return x, y
 
     def __len__(self):
         return self.cumulative_counts[-1]

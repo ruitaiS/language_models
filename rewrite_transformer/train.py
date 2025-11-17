@@ -99,5 +99,12 @@ processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 
-print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
-print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
+print(f"Dataset length: {len(akjv_dataset)}")
+print(f"dataset[0]: {akjv_dataset[0]}")
+print(f"dataset[1]: {akjv_dataset[1]}")
+print(f"dataset[-1]: {akjv_dataset[-1]}")
+print(f"dataset[len]: {akjv_dataset[len(akjv_dataset)]}")
+
+
+#print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
+#print(f"Sample Line Reconstructed:\n{delimiter.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
