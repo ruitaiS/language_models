@@ -8,26 +8,57 @@ from torch.nn.utils import clip_grad_norm_
 
 from transformer import LanguageModel
 
+def calculate_loss(logits, targets, pad_token_idx=3):
+    # In each batch:
+    # logits shape (batch_size, seq_len, vocab_size)
+    # targets shape (batch_size, seq_len)
+    # Think of these as two batch_size, seq_len matrices
+    # logits contains a vocab length logits vector in each entry
+    # while targets simply contains a token index
+    # The logits vectors from one matrix are trying to predict the corresponding token indices in the other.
+
+    # For nn.CrossEntropyLoss:
+    # We want to unroll these into two batch_size * seq_len lists, so that:
+    # Each element of flattened_logits is a logits vector
+    # Each element of flattened_targets is a token index
+    loss_func = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=pad_token_idx)
+    flattened_logits = logits.view(-1, logits.shape[-1])
+    flattened_targets = targets.view(-1)
+    return loss_func(flattened_logits, flattened_targets)
+
 def train_model(model_name,
                 batch_size,
                 context_len,
-                embedding_depth,
+                embedding_dim,
                 num_layers,
-                total_heads,
-                masked = True):
+                total_heads):
+    
+    # Pulled from LanguageModel forward pass
+    '''
+            if targets is not None:
+                # View Tokens flowing through:
+                #for seq in targets:
+                #    view = [self.idx2token[token.item()] for token in seq]
+                #    print(' '.join(view))
+                #print('')
+
+            #    print(f"Targets Shape: {targets.shape}")
+                #targets = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(targets)
+                #targets = torch.tensor(targets, dtype=torch.long)
+                loss = self.calculate_loss(logits, targets)
+            else:
+                loss = None
+            return logits, loss
+    '''
+
 
     # TODO
     #dataset = data.get_dataset('train', dataset_id)
     #aux_data = data.extract_aux(dataset)
 
-    idx2token, token2idx = None # TODO
+    pad_token_idx, idx2token, token2idx = None # TODO
 
-    model = LanguageModel(
-            (idx2token, token2idx),
-            embedding_depth,
-            context_len,
-            num_layers,
-            total_heads)
+    model = LanguageModel( vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads)
     model.train()
 
     print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
@@ -49,7 +80,8 @@ def train_model(model_name,
 
             #start = time.time()
             for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
-                logits, loss = model(X, targets=Y)
+                logits = model(X)
+                loss = calculate_loss(X, Y, pad_token_idx)
                 optimizer.zero_grad(set_to_none=True)
                 #optimizer.grad.zero_()
                 loss.backward()
@@ -133,8 +165,9 @@ drop_last=True
 tokenization='word'
 include_book=False
 
-# TODO: Put all this inside a function
-#def make_loader(lines, **kwargs):
+# TODO: Put all this inside a make_loader function
+def make_loader(lines, **kwargs):
+    pass
 
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)

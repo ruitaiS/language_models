@@ -6,10 +6,6 @@ import torch
 from torch.utils.data import Dataset
 from nltk.tokenize import RegexpTokenizer
 
-#import nltk
-#from nltk import sent_tokenize
-#from nltk.corpus import brown
-#nltk.data.path.append(os.path.dirname(os.path.dirname(__file__)))
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 def preprocess_akjv(include_book=True):
@@ -109,3 +105,14 @@ class TransformerDataset(Dataset):
     def __len__(self):
         return self.cumulative_counts[-1]
 
+# TODO
+class Tokenizer:
+    def __init__(self):
+        #vocabulary, special tokens, idx2token, etc.
+        pass
+
+    def encode(self, text):
+        return None
+
+    def decode(self, token_ids):
+        return None
