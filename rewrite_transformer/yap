@@ -134,6 +134,28 @@ you also need to think about the tokenizer space as equivalent to all utf encoda
 
 right now what you've got going on is ok, but just be aware this isn't how it's generally done. after the transformer / rnn models are done, a proper tokenizer implementation would be fun if you want to go deeper into this, but definitely not high priority.
 
+### padding
+
+there's still a little conceptual confusion on how padding works i think.
+
+rn what i'm doing is starting with the first token for each line at the last position of X, and sliding across until the last position of X is the second to last on the line.
+
+but this means for each line, there's always going to be `context_window - 1` examples where there's padding characters.
+
+why don't we always just start on the first full context window? and if the line is too short to fill the context window, we'll just have *one* pair with *right* padding.
+
+>> ok so there's actually several ways to do it, and i think instead of deciding one is inherently better, we should try all of them to see which works better
+
+>> (what we have right now) start from the first character, stop when you reach the last character (do not go past)
+>> start from first, slide past the entire line until you end up with right-padded sequence and only the last character on the line is the first in the conext window
+>> use only full context windows; if the line isn't long enough, slide it across the window only but don't slide out. eg. first example has the entire line on the right side of x; last example has the entire line on the left side of y
+
+alternatively, you can join all the lines, and just slide the context window across a continuous text (with <s> and </s> tokens).
+
+worth experimenting, and tbh you should probably read up on the existing literature on this stuff. i feel like you re-invent the wheel a lot b/c you want to try everything yourself and it's good as a learning exercise but sometimes not very time-efficient, and you realize later (as in the case of BPE) that you were doing something quite foolish
+
+https://huggingface.co/blog/sirluk/llm-sequence-packing
+
 
 ### stuff to read / watch:
 

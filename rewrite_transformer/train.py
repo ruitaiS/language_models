@@ -130,13 +130,14 @@ batch_size = 50
 validation_p = 0.1
 shuffle=True
 drop_last=True
-tokenization='char'
-include_book=True
+tokenization='word'
+include_book=False
+
+# TODO: Put all this inside a function
+#def make_loader(lines, **kwargs):
 
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
-print(f"Sample Line Encoded:\n{encoded_lines[0]}\n")
-print(f"Sample Line Reconstructed:\n{''.join([idx2token.get(idx, '<?>') for idx in encoded_lines[0]])}\n")
 
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 val_size = int(len(akjv_dataset) * validation_p)
@@ -147,8 +148,6 @@ print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {valid
 print(f"Training Set Size: {len(train_set)}")
 print(f"Validation Set Size: {len(val_set)}")
 print(f"Sum: {len(train_set) + len(val_set)}\n")
-
-
 
 train_loader = torch.utils.data.DataLoader(
     train_set,
@@ -162,5 +161,17 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last)
 
 print(f"Batch Size: {batch_size} || Drop Last Incomplete Batch: {drop_last}")
+print(f"Context Length: {context_len}")
 print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
-print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}")
+print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
+
+
+x, y = next(iter(train_loader))
+print(f"Sample x.shape: {x.shape}")
+print(f"Sample y.shape: {y.shape}\n")
+print(f"x[0]:{x[0]}\n")
+print(f"y[0]:{y[0]}\n")
+print(f"x[0] Reconstructed (Bracketed, Padding Stripped):")
+print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in x[0] if idx.item() != 3])}]\n")
+print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
+print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in y[0] if idx.item() != 3])}]\n")
