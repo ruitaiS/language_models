@@ -154,8 +154,27 @@ alternatively, you can join all the lines, and just slide the context window acr
 
 worth experimenting, and tbh you should probably read up on the existing literature on this stuff. i feel like you re-invent the wheel a lot b/c you want to try everything yourself and it's good as a learning exercise but sometimes not very time-efficient, and you realize later (as in the case of BPE) that you were doing something quite foolish
 
-https://huggingface.co/blog/sirluk/llm-sequence-packing
+### hf style packing + masking
 
+this is a really clever approach here:
+https://huggingface.co/blog/sirluk/llm-sequence-packing
+they're joining all the sentences together, with a single token seperator (as opposed to your [</s>, <s>] pair that would occur if you joined yours), and they're using attention masking so that you don't have cross-sentence attention
+
+look closer at your autoregression masking implementation - each context window has a set of masks that is applied to each position already, because each position needs to be masked differently (eg. the first token in the sentence needs almost all the words masked out, while the last token needs none).
+
+apply the same idea to check for sentence boundaries - each position, mask out future positions as well as positions that go beyond the boundary of the current sentence. mask should look something like:
+
+https://cdn-uploads.huggingface.co/production/uploads/6041ff7ff84ebe399f1c85ea/gd0J4zQedkGw1hNYcwTgX.png
+
+you see how instead of a full triangular, it's got this sawtooth shape that resets on each sentence boundary? very very cool.
+
+for consistency, you should also pre-shuffle all the sentences before joining together into one sequence, in addition to shuffling the context windows generated from it when you do the dataloader splits
+
+you also need to adjust the position encodings - eg. it needs to know that the token coming after sentence boundaries is in the first position (and not wherever it happens to appear in the context window). your position encoding implementation needs to change slightly (i think right now it reads directly off the index position; you need some way to modify the actual position value before feeding it into the position embedding)
+
+### positional encoding w/ sliding context window confusion
+
+still not totally sure how to handle this. it feels like we need to intentionally remove absolute position by sliding the tokens through the whole context window. but seems like it actually can learn absolute encodings (but idk any good way to make use of it, unless i assign a large context window, always align to the start, and cut off any remainder)
 
 ### stuff to read / watch:
 
