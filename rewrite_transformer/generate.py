@@ -3,9 +3,6 @@ from torch.nn import functional as F
 from data import Tokenizer
 #import transformer
 
-def decode(encoded_tensor):
-    return [idx2token(token.item()) for token in encoded_tensor]
-
 # TODO (this is directly cut out of the transformer module + needs edits)
 def generate(model, idx2token, prompt= [], response_length=100):
     def sample(probabilities):

@@ -30,6 +30,7 @@ def preprocess_akjv(include_book=True):
         processed_lines.append(processed)
     return processed_lines
 
+# TODO: This, and build_and_encode, shoudl be part fo tokenizer class
 def tokenize(text, tokenization='char'):
     assert tokenization in ('char', 'word'), (
     f"tokenization must be 'char' or 'word' - got {tokenization}")
@@ -107,12 +108,16 @@ class TransformerDataset(Dataset):
 
 # TODO
 class Tokenizer:
-    def __init__(self):
+    def __init__(self, tokenization='char'):
         #vocabulary, special tokens, idx2token, etc.
+        self.tokenization=tokenization
+        self.idx2token = None
+        self.token2idx = None
         pass
 
     def encode(self, text):
-        return None
+        tokens = tokenize(text, self.tokenization)
+        return [self.token2idx.get(token, oov_token_idx) for token in tokens]
 
-    def decode(self, token_ids):
-        return None
+    def decode(self, encoded_tensor):
+        return [self.idx2token(token.item()) for token in encoded_tensor]

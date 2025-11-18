@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 import data
-from model_handler import load_model
+import generate
 
 #model_name = 'trigram_imitation'
 #model_data = load_model(model_name)
