@@ -193,7 +193,7 @@ worth experimenting, and tbh you should probably read up on the existing literat
 
 this is a really clever approach here:
 https://huggingface.co/blog/sirluk/llm-sequence-packing
-they're joining all the sentences together, with a single token seperator (as opposed to your [</s>, <s>] pair that would occur if you joined yours), and they're using attention masking so that you don't have cross-sentence attention
+they're joining all the sentences together, with a single token seperator (as opposed to your `[</s>, <s>]` pair that would occur if you joined yours), and they're using attention masking so that you don't have cross-sentence attention
 
 look closer at your autoregression masking implementation - each context window has a set of masks that is applied to each position already, because each position needs to be masked differently (eg. the first token in the sentence needs almost all the words masked out, while the last token needs none).
 
