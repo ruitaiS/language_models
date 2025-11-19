@@ -31,20 +31,20 @@ def preprocess_akjv(include_book=True):
     return processed_lines
 
 # TODO: This, and build_and_encode, shoudl be part fo tokenizer class
-def tokenize(text, tokenization='char'):
-    assert tokenization in ('char', 'word'), (
-    f"tokenization must be 'char' or 'word' - got {tokenization}")
+'''def tokenize(text, method='char'):
+    assert method in ('char', 'word'), (
+    f"Tokenization method must be 'char' or 'word' - got {method}")
 
-    if tokenization == 'word':
+    if method == 'word':
         tokenizer = RegexpTokenizer(r"\s+|<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
         tokens = tokenizer.tokenize(text)
         return tokens
-    else: # tokenization == 'char'
-        return list(text)
+    else: # method == 'char'
+        return list(text)'''
 
-def build_and_encode(lines, tokenization='char'):
-    print(f"Building vocabulary using {tokenization} tokenization...")
-    vocab = sorted(set(tokenize("".join(lines), tokenization)))
+def build_and_encode(lines, method='char'):
+    print(f"Building vocabulary using {method} tokenization...")
+    vocab = sorted(set(tokenize("".join(lines), method)))
 
     vocab.insert(0, '<?>') # out of dictionary token
     vocab.insert(1, '<s>') # start token
@@ -59,7 +59,7 @@ def build_and_encode(lines, tokenization='char'):
     print("Encoding Lines...")
     encoded_lines = []
     for line in lines:
-        tokens = tokenize(line, tokenization)
+        tokens = tokenize(line, method)
         encoded = [token2idx.get(token, 0) for token in tokens]
         encoded_lines.append([1] + encoded + [2])
     print(f"Finished encoding {len(encoded_lines)} lines\n")
@@ -106,18 +106,66 @@ class TransformerDataset(Dataset):
     def __len__(self):
         return self.cumulative_counts[-1]
 
-# TODO
+# TODO: test
 class Tokenizer:
-    def __init__(self, tokenization='char'):
-        #vocabulary, special tokens, idx2token, etc.
-        self.tokenization=tokenization
+    def __init__(self, method='char'):
+
+        self.oov_token_idx, self.oov_token     = 0, '<?>'
+        self.start_token_idx, self.start_token = 1, '<s>'
+        self.end_token_idx, self.end_token     = 2, '</s>'
+        self.pad_token_idx, self.pad_token     = 3, '<>'
+
+        self.method = None
+        self._tokenize = None
+        self.set_tokenizer(method)
+
+        self.vocab_size = None
         self.idx2token = None
         self.token2idx = None
-        pass
+        #self.build_vocab(...)
 
-    def encode(self, text):
-        tokens = tokenize(text, self.tokenization)
-        return [self.token2idx.get(token, oov_token_idx) for token in tokens]
+    def set_tokenizer(self, method):
+        assert method in ('char', 'word'), (
+        f"Tokenization method must be 'char' or 'word' - got {method}")
+        self.method = method
+        if method == 'word':
+            re_tokenizer = RegexpTokenizer(r"\s+|<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
+            self._tokenize = lambda text: re_tokenizer.tokenize(text)
+        else: # method == 'char'
+            self._tokenize = lambda text: list(text)
 
+    def build_vocab(self, sentences):
+        assert isinstance(sentences, str) or (isinstance(sentences, list) and all(isinstance(sentence, str) for sentence in sentences)),\
+            "Input must be a string or a list of strings"
+
+        print(f"Building vocabulary using {self.method} tokenization...")
+        if isinstance(sentences, str): sentences = [sentences]
+        vocab = set()
+        for sentence in sentences: vocab.update(self.tokenize(sentence))
+        vocab = sorted(vocab)
+
+        # TODO: Handle edge case where these appear organically in the text. For now, assume they don't
+        # Care: adding indices outside of this order will fuck them up
+        vocab.insert(self.oov_token_idx, self.oov_token)
+        vocab.insert(self.start_token_idx, self.start_token)
+        vocab.insert(self.end_token_idx, self.end_token)
+        vocab.insert(self.pad_token_idx, self.pad_token)
+
+        self.vocab_size = len(vocab)
+        self.idx2token = dict(enumerate(vocab))
+        self.token2idx = {token:idx for idx, token in self.idx2token.items()}
+        print(f"Final vocabulary size: {self.vocab_size}\n")
+
+    def tokenize(self, text):
+        assert isinstance(text, str)
+        return self._tokenize(text)
+
+    # TODO: Type flexibility; should be able to encode / decode back and forth fluidly
+    def encode(self, text_str):
+        assert isinstance(text_str, str)
+        return [self.token2idx.get(token, self.oov_token_idx) for token in self.tokenize(text_str)]
+    
+    # TODO: Type flexibility
     def decode(self, encoded_tensor):
-        return [self.idx2token(token.item()) for token in encoded_tensor]
+        assert isinstance(encoded_tensor, torch.Tensor)
+        return [self.idx2token.get(token_idx.item(), self.oov_token) for token_idx in encoded_tensor]

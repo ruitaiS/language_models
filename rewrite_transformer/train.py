@@ -165,12 +165,27 @@ drop_last=True
 tokenization='word'
 include_book=False
 
+
+
 # TODO: Put all this inside a make_loader function
 def make_loader(lines, **kwargs):
     pass
 
+# Loader Initialization ------------------------------------------------------------------------------------
 processed_lines= data.preprocess_akjv(include_book)
 encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
+
+# TODO: save as self.foos inside of the tokenizer
+oov_token_idx = 0
+start_token_idx = 1
+end_token_idx = 2
+pad_token_idx = 3
+'''
+vocab.insert(0, '<?>') # out of dictionary token
+vocab.insert(1, '<s>') # start token
+vocab.insert(2, '</s>') # end token
+vocab.insert(3, '<>') # pad token
+'''
 
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
 val_size = int(len(akjv_dataset) * validation_p)
@@ -208,3 +223,6 @@ print(f"x[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in x[0] if idx.item() != 3])}]\n")
 print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in y[0] if idx.item() != 3])}]\n")
+# --------------------------------------------------------------------------------------------------------------
+
+#model = LanguageModel(vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads)

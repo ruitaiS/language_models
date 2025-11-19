@@ -168,13 +168,17 @@ https://cdn-uploads.huggingface.co/production/uploads/6041ff7ff84ebe399f1c85ea/g
 
 you see how instead of a full triangular, it's got this sawtooth shape that resets on each sentence boundary? very very cool.
 
-for consistency, you should also pre-shuffle all the sentences before joining together into one sequence, in addition to shuffling the context windows generated from it when you do the dataloader splits
+for consistency, you should also pre-shuffle all the sentences before joining together into one sequence, in addition to shuffling the context windows generated from it when you do the dataloader splits.
 
-you also need to adjust the position encodings - eg. it needs to know that the token coming after sentence boundaries is in the first position (and not wherever it happens to appear in the context window). your position encoding implementation needs to change slightly (i think right now it reads directly off the index position; you need some way to modify the actual position value before feeding it into the position embedding)
+
+
+you also may want to to adjust the position encodings - eg. it needs to know that the token coming after sentence boundaries is in the first position (and not wherever it happens to appear in the context window). your position encoding implementation needs to change slightly (i think right now it reads directly off the index position; you need some way to modify the actual position value before feeding it into the position embedding). hmm realistically though i think this doesn't really matter, because we're always scrambling the absolute positions anyway by using sliding context windows(see below).
 
 ### positional encoding w/ sliding context window confusion
 
-still not totally sure how to handle this. it feels like we need to intentionally remove absolute position by sliding the tokens through the whole context window. but seems like it actually can learn absolute encodings (but idk any good way to make use of it, unless i assign a large context window, always align to the start, and cut off any remainder)
+still not totally sure how to handle this. it feels like we need to intentionally destroy absolute position associations by sliding the tokens through the whole context window. but seems like it actually can learn absolute encodings (but idk any good way to make use of it, unless i assign a large context window, always align to the start, and cut off any remainder)
+
+you could add i guess a window offset parameter in addition to the position encodings? idk idk. these are more ponderings for later
 
 ### stuff to read / watch:
 
