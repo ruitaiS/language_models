@@ -211,7 +211,7 @@ print(f"Context Length: {context_len}")
 print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
 print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
 
-x, y = next(iter(train_loader))
+x, y = next(iter(train_loader)) # Remember x, y here are batches
 print(f"Sample x.shape: {x.shape}")
 print(f"Sample y.shape: {y.shape}\n")
 print(f"x[0]:{x[0]}\n")
@@ -240,13 +240,15 @@ print(f"Optimizer: {optimizer}")
 # Single Test Pass with Sample x, y
 logits_batch = model(x)
 print(f"Logits.shape: {logits_batch.shape}\n")
-next_token_batch = generate.next_token(logits_batch)
+next_token_batch = generate.sample(logits_batch)
 print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
 print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
 
 
 print(f"Targets.shape: {y.shape}")
-#print(f"Logits: {logits}")
+
+loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
+print(f"Loss: {loss}")
 
 '''
 try:

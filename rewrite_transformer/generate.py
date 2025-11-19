@@ -4,8 +4,9 @@ from data import Tokenizer
 #import transformer
 
 # TODO: temperature, top-k (see ch 10)
-def next_token(logits_batch):
-    logits_batch = logits_batch[:, -1:, :] # Only want last token, not whole sequence
+# Samples the last logits for each element in the batch
+def sample(logits_batch):
+    logits_batch = logits_batch[:, -1:, :] # Keep the last logits vector, discard rest of sequence, for each sequence in the batch
     # dim=-1 >> softmax along vocab indices to get probabilities
     probs = F.softmax(logits_batch, dim=-1)
     return torch.distributions.Categorical(probs=probs).sample()

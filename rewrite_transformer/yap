@@ -95,6 +95,15 @@ in the existing code you're kind of manually shuffling and selecting the split i
 
 definitely revisit the RNN version because padding out each batch to match the longest sequence increases the complexity. Luckily for transformers, the padding happens inside `TransformerDataset` at `getitem` time, so we don't need to do anything special with the loader
 
+
+### model handler class
+
+you're instantiating a `loss_func` every time you call `calculate_loss`, which is retarded.
+
+you probably want one Model Handler class to handle the datasets, the optimizers, the loss function, the training steps, and model saving / loading
+
+idk. i feel like you're just.. making boxes around boxes :))) whatever. i think you do need it though
+
 ### make your own diagrams
 
 the rnn one you have now definitely looks super technical and complicated but wtf is it even trying to convey. like it'll for sure impress someone who's just skimming or doesn't know what they're looking at, but if anyone's like "hey, can you step through your model architecture starting with the computation graph" you're fucked.
