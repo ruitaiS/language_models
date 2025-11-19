@@ -225,6 +225,7 @@ i feel like i spend a lot of time deciding how to name things
 
 these are iterations of the same x, y batch that is already retrieved and set `.to(device)`
 
+```
 batch size 50 || 5000 iterations || 250,000 samples
 gpu time: 39.677313804626465
 cpu time: 131.20743060112
@@ -272,8 +273,7 @@ cpu time: 109.40308117866516
 |  0%   48C    P1            143W /  300W |    1177MiB /  16303MiB |     92%      Default |
 |                                         |                        |                  N/A |
 +-----------------------------------------+------------------------+----------------------+
-
-
+```
 
 batch size is the main lever for increasing parallelization at the cost of more gpu memory.
 keep in mind that as batch size increases, it's like taking bigger bites out of the data, so there's fewer bites in total to consume the entire set
@@ -281,6 +281,7 @@ here we just have a static 5000 iterations, but really when you increase batch s
 
 you basically processed 10x more total sequences when you changed batch size from 50 to 500 but kept # of iterations the same
 
+```
 500 batch size || 5000 iterations
 Same # of iterations, 10x batch size (10x number of samples processed)
 gpu took 1.5x what it did before
@@ -290,10 +291,11 @@ cpu took 7x
 Same # of samples, 10x batch size (1/10 number of iterations)
 gpu took 0.15x as much time
 cpu took 0.83x as much time
+```
 
 Roughly speaking:
-CPU cares about the total number of samples, and doesn't care how you package them b/c it's still gonna take the same amount of time per sample
-GPU cares about the total number of iterations you're doing, no matter how much you're putting into one iteration (assuming you don't overload the memory), b/c it's still gonna take the same amount of time per iteration
+- CPU cares about the total number of samples, and doesn't care how you package them b/c it's still gonna take the same amount of time per sample
+- GPU cares about the total number of iterations you're doing, no matter how much you're putting into one iteration (assuming you don't overload the memory), b/c it's still gonna take the same amount of time per iteration
 
 
 so:
@@ -311,6 +313,7 @@ mostly learning rate i think needs to be.. increased? b/c you're doing one updat
 - the LM head unembedding is really questionable
 
 - when you start pulling real batches out of the loader:
+```
     loader = DataLoader(
         dataset,
         batch_size=...,
@@ -322,7 +325,7 @@ mostly learning rate i think needs to be.. increased? b/c you're doing one updat
     for X, y in loader:
         X = X.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
-
+```
 
 ### stuff to read / watch:
 
