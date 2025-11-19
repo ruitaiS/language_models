@@ -102,8 +102,8 @@ class Tokenizer:
 
         encoded_lines = []
         for line in lines:
-            idx_seq = self.encode(line)
-            encoded_lines.append([self.start_token_idx] + idx_seq + [self.end_token_idx])
+            idx_seq = [self.start_token_idx] + self.encode(line) + [self.end_token_idx]
+            encoded_lines.append(idx_seq)
         print(f"Finished encoding {len(encoded_lines)} lines\n")
         return encoded_lines
     
