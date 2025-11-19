@@ -275,11 +275,9 @@ cpu time: 109.40308117866516
 +-----------------------------------------+------------------------+----------------------+
 ```
 
-batch size is the main lever for increasing parallelization at the cost of more gpu memory.
-keep in mind that as batch size increases, it's like taking bigger bites out of the data, so there's fewer bites in total to consume the entire set
-here we just have a static 5000 iterations, but really when you increase batch size by a factor of 10, if you really want a fair comparison you should be doing 500 iterations
+batch size is the main lever for increasing parallelization at the cost of more gpu memory. note in the first instance with batch size 50 the GPU was under-utilized
 
-you basically processed 10x more total sequences when you changed batch size from 50 to 500 but kept # of iterations the same
+keep in mind that as batch size increases, it's like taking bigger bites out of the data, but there's proportionally fewer bites needed to consume the entire set. if you want to think about time improvement per epoch, you need to keep the number of total samples processed the same (eg. if you N x the batch size, 1/N x the number of iterations)
 
 ```
 500 batch size || 5000 iterations
@@ -299,8 +297,8 @@ Roughly speaking:
 
 
 so:
-increase batch size until you're close to maxing out memory, and tweak other params
-mostly learning rate i think needs to be.. increased? b/c you're doing one update per 500 sequences instead of per 50 >> 10x the lr to accomodate?
+- increase batch size until you're close to maxing out memory, and tweak other params
+- mostly learning rate i think needs to be.. increased? b/c you're doing one update per 500 sequences instead of per 50 >> 10x the lr to accomodate?
 
 ### some things to optimize:
 
