@@ -134,6 +134,24 @@ you also need to think about the tokenizer space as equivalent to all utf encoda
 
 right now what you've got going on is ok, but just be aware this isn't how it's generally done. after the transformer / rnn models are done, a proper tokenizer implementation would be fun if you want to go deeper into this, but definitely not high priority.
 
+---
+
+some implementations do use explicit rules for handling delimiters / whitespace on decode - you improve model performance by reducing the scope of the problem (since it no longer needs to learn those patterns explicitly), but it makes it more annoying to implement.
+
+basically less complexity for the model, but more complexity in the code.
+
+for what you're doing, the "everything is a token" approach is fine.
+
+
+---
+
+questioning the design pattern for tokenizer initialization - i'm allowing it to be spun up without an initial text to build vocab from with the assumption that it will be added it later, but nothing works until you do. do you really need the extra flexibility? only use case i can think of is where you need to initialize the tokenizer first, then do some processing on the text, then feed it into the tokenizer to build the vocab. but why would you ever need to first initialize the tokenizer? why would you ever not be able to process the text first? idk.
+
+keeping it as is b/c it's more work to get less functionality, but it feels weird
+
+
+
+
 ### padding
 
 there's still a little conceptual confusion on how padding works i think.
@@ -179,6 +197,12 @@ you also may want to to adjust the position encodings - eg. it needs to know tha
 still not totally sure how to handle this. it feels like we need to intentionally destroy absolute position associations by sliding the tokens through the whole context window. but seems like it actually can learn absolute encodings (but idk any good way to make use of it, unless i assign a large context window, always align to the start, and cut off any remainder)
 
 you could add i guess a window offset parameter in addition to the position encodings? idk idk. these are more ponderings for later
+
+### what is the plural of text
+
+anyway i'm using text_str to distinguish between just a single string of text, vs `text` which is a general body of text (either a list of several lines of text_str or a single large text_str)
+
+i feel like i spend a lot of time deciding how to name things
 
 ### stuff to read / watch:
 

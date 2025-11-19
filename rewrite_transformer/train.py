@@ -162,32 +162,27 @@ batch_size = 50
 validation_p = 0.1
 shuffle=True
 drop_last=True
-tokenization='word'
-include_book=False
+tokenization_method='char'
+include_book=True
 
 
+
+# Tokenizer Initialization ------------------------------------------------------------------------------------
+processed_lines = data.preprocess_akjv(include_book)
+tokenizer = data.Tokenizer(method=tokenization_method, initialization_text=processed_lines)
+encoded_lines = tokenizer.encode_lines(processed_lines)
+#vocab_size
+#idx2token
+#token2idx
 
 # TODO: Put all this inside a make_loader function
 def make_loader(lines, **kwargs):
     pass
-
 # Loader Initialization ------------------------------------------------------------------------------------
-processed_lines= data.preprocess_akjv(include_book)
-encoded_lines, vocab_size, idx2token, token2idx = data.build_and_encode(processed_lines, tokenization)
-
-# TODO: save as self.foos inside of the tokenizer
-oov_token_idx = 0
-start_token_idx = 1
-end_token_idx = 2
-pad_token_idx = 3
-'''
-vocab.insert(0, '<?>') # out of dictionary token
-vocab.insert(1, '<s>') # start token
-vocab.insert(2, '</s>') # end token
-vocab.insert(3, '<>') # pad token
-'''
-
-akjv_dataset = data.TransformerDataset(encoded_lines, context_len)
+akjv_dataset = data.TransformerDataset(encoded_lines, context_len,
+                                       start_token_idx=tokenizer.start_token_idx,
+                                       end_token_idx=tokenizer.end_token_idx,
+                                       pad_token_idx=tokenizer.pad_token_idx)
 val_size = int(len(akjv_dataset) * validation_p)
 train_size = len(akjv_dataset) - val_size
 train_set, val_set = torch.utils.data.random_split(akjv_dataset, [train_size, val_size])
@@ -213,16 +208,15 @@ print(f"Context Length: {context_len}")
 print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
 print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
 
-
 x, y = next(iter(train_loader))
 print(f"Sample x.shape: {x.shape}")
 print(f"Sample y.shape: {y.shape}\n")
 print(f"x[0]:{x[0]}\n")
 print(f"y[0]:{y[0]}\n")
 print(f"x[0] Reconstructed (Bracketed, Padding Stripped):")
-print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in x[0] if idx.item() != 3])}]\n")
+print(f"[{tokenizer.decode(x[0], drop_padding=True)}]\n")
 print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
-print(f"[{''.join([idx2token.get(idx.item(), '<?>') for idx in y[0] if idx.item() != 3])}]\n")
+print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")
 # --------------------------------------------------------------------------------------------------------------
 
 #model = LanguageModel(vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads)
