@@ -161,7 +161,7 @@ num_layers = 6
 total_heads = 1
 
 # Data Parameters:
-batch_size = 50
+batch_size = 500
 validation_p = 0.1
 shuffle=True
 drop_last=True
@@ -222,12 +222,17 @@ print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")
 # --------------------------------------------------------------------------------------------------------------
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device= torch.device("cpu")
+print(f"Device: {device}\n")
+
 model = LanguageModel(context_len,
                       embedding_dim,
                       num_layers,
                       total_heads,
                       vocab_size=tokenizer.vocab_size,
                       pad_token_idx=tokenizer.pad_token_idx)
+model.to(device)
 model.train()
 
 print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
@@ -238,17 +243,28 @@ optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 print(f"Optimizer: {optimizer}")
 
 # Single Test Pass with Sample x, y
-logits_batch = model(x)
-print(f"Logits.shape: {logits_batch.shape}\n")
-next_token_batch = generate.sample(logits_batch)
-print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
-print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
+#logits_batch = model(x)
+#print(f"Logits.shape: {logits_batch.shape}\n")
+#next_token_batch = generate.sample(logits_batch)
+#print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
+#print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
+#print(f"Targets.shape: {y.shape}")
 
+# Test Loop On One Batch:
+x, y = x.to(device), y.to(device)
+#torch.autograd.set_detect_anomaly(True)
+start = time.time()
+for i in range(500):
+    logits_batch = model(x)
+    loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
+    print(f"Iteration {i} || Loss: {loss}")
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()
+    #clip_grad_norm_(model.parameters(), max_norm=1.0)
+    optimizer.step()
+elapsed = time.time() - start
+print(f"Elapsed time: {elapsed}")
 
-print(f"Targets.shape: {y.shape}")
-
-loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
-print(f"Loss: {loss}")
 
 '''
 try:

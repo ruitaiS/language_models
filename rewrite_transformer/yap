@@ -221,6 +221,109 @@ anyway i'm using text_str to distinguish between just a single string of text, v
 
 i feel like i spend a lot of time deciding how to name things
 
+### gpu vs. cpu
+
+these are iterations of the same x, y batch that is already retrieved and set `.to(device)`
+
+batch size 50 || 5000 iterations || 250,000 samples
+gpu time: 39.677313804626465
+cpu time: 131.20743060112
+
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.105.08             Driver Version: 580.105.08     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5070 Ti     On  |   00000000:01:00.0  On |                  N/A |
+|  0%   48C    P1             72W /  300W |     811MiB /  16303MiB |     39%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
+batch_size 500 || 5000 iterations || 2,500,000 samples
+gpu time: 57.66515302658081
+cpu time: 937.3649899959564
+
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.105.08             Driver Version: 580.105.08     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5070 Ti     On  |   00000000:01:00.0  On |                  N/A |
+|  0%   53C    P1            146W /  300W |    1227MiB /  16303MiB |     92%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
+batch_size 500 || 500 iterations || 250,000 samples
+gpu time: 6.036633253097534
+cpu time: 109.40308117866516
+
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.105.08             Driver Version: 580.105.08     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5070 Ti     On  |   00000000:01:00.0  On |                  N/A |
+|  0%   48C    P1            143W /  300W |    1177MiB /  16303MiB |     92%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
+
+
+batch size is the main lever for increasing parallelization at the cost of more gpu memory.
+keep in mind that as batch size increases, it's like taking bigger bites out of the data, so there's fewer bites in total to consume the entire set
+here we just have a static 5000 iterations, but really when you increase batch size by a factor of 10, if you really want a fair comparison you should be doing 500 iterations
+
+you basically processed 10x more total sequences when you changed batch size from 50 to 500 but kept # of iterations the same
+
+500 batch size || 5000 iterations
+Same # of iterations, 10x batch size (10x number of samples processed)
+gpu took 1.5x what it did before
+cpu took 7x
+
+500 batch size || 500 iterations
+Same # of samples, 10x batch size (1/10 number of iterations)
+gpu took 0.15x as much time
+cpu took 0.83x as much time
+
+Roughly speaking:
+CPU cares about the total number of samples, and doesn't care how you package them b/c it's still gonna take the same amount of time per sample
+GPU cares about the total number of iterations you're doing, no matter how much you're putting into one iteration (assuming you don't overload the memory), b/c it's still gonna take the same amount of time per iteration
+
+
+so:
+increase batch size until you're close to maxing out memory, and tweak other params
+mostly learning rate i think needs to be.. increased? b/c you're doing one update per 500 sequences instead of per 50 >> 10x the lr to accomodate?
+
+### some things to optimize:
+
+- check for `.to(device)` calls inside of forward rather than init.
+
+- the autoregression mask in particular is done a really stupid way; i think it's re-instantiated and re-sent to device for every single input that passes through an attention head (and re-instantiated once for every attention head!!!), which is mind-bogglingly stupid, considering it's a triangular boolean matrix that we can just define ahead of time and re-use for every input, assuming we don't change the input shape. i think what we should do is expose the input shape (batch_size, context_len) as a parameter that is changed manually; every time it's changed, the mask is re-calculated and stored
+
+- the loss function is also foolishly re-defined every time we call `calculate_loss`
+- the embedding layer needs to know device at instantiation so it can send E and P there
+- the LM head unembedding is really questionable
+
+- when you start pulling real batches out of the loader:
+    loader = DataLoader(
+        dataset,
+        batch_size=...,
+        shuffle=True,
+        num_workers=4,      # or 8, experiment
+        pin_memory=True     # when using CUDA
+    )
+
+    for X, y in loader:
+        X = X.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
+
+
 ### stuff to read / watch:
 
 kaparthy talks through tokenizers

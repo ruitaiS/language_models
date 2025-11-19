@@ -5,8 +5,11 @@ from torch.nn import functional as F
 class EmbeddingLayer(nn.Module):
     def __init__(self, embedding_dim, vocab_size, context_len, pad_token_idx):
         super().__init__()
-        self.E = nn.Embedding(vocab_size,embedding_dim) # word embeddings
-        self.P = nn.Embedding(context_len,embedding_dim) # position embeddings
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # TODO: this is maximally janky
+        #device=torch.device("cpu")
+        self.E = nn.Embedding(vocab_size,embedding_dim).to(device) # word embeddings
+        self.P = nn.Embedding(context_len,embedding_dim).to(device) # position embeddings
         self.pad_token_idx = pad_token_idx
         #print('embedding layer init')
 
@@ -16,7 +19,7 @@ class EmbeddingLayer(nn.Module):
         # tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
 
         batch_size, seq_len = token_batch.shape
-        positions = torch.arange(seq_len).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
+        positions = torch.arange(seq_len, device=token_batch.device).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
         padding_mask = (token_batch != self.pad_token_idx) # keep Trues, mask Falses. Note this is seperate from causal masking
         X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
         #print(f"embedding_layer(tokens): {X}")
@@ -178,6 +181,8 @@ class SHA(nn.Module): # Single Head Attention
         return output
 
     # TODO: Double check if this is flipped the right way
+    # TODO: calculating the mask more than once is TREMENDOUSLY stupid
+    # should really just calculated it once based on the shape of the expected input, and store it
     def mask (self, input, padding_mask):
         if not self.masked: return input
 
@@ -185,7 +190,7 @@ class SHA(nn.Module): # Single Head Attention
         assert rows == cols, f"Matrix is not square: {rows}x{cols}"
 
         expanded_padding_mask = padding_mask.unsqueeze(1) & padding_mask.unsqueeze(2)
-        autoregression_mask = torch.tril(torch.ones(rows, rows, dtype=torch.bool)).repeat(batch_size, 1, 1)
+        autoregression_mask = torch.tril(torch.ones(rows, rows, dtype=torch.bool, device=input.device)).repeat(batch_size, 1, 1)
 
         '''print(f"Padding Mask Shape: {padding_mask.shape}")
         print(padding_mask)
