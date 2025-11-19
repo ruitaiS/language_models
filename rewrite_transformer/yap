@@ -150,7 +150,13 @@ questioning the design pattern for tokenizer initialization - i'm allowing it to
 keeping it as is b/c it's more work to get less functionality, but it feels weird
 
 
+### token encoding / decoding
 
+encoding takes either a string or a list of strings, and in one function, converts it into a token sequence, then the token sequence into an index sequence
+
+decoding accepts an index sequence, and outputs a string
+
+that's why you handle `idx_seq` when decoding, but never deal with `token_seq` when encoding. the intermediate form is produced by `tokenize(text_str)`, but it's never stored; it's directly converted into an index sequence as part of the encoding process
 
 ### padding
 

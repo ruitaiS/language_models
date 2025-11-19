@@ -102,26 +102,26 @@ class Tokenizer:
 
         encoded_lines = []
         for line in lines:
-            encoded = self.encode(line)
-            encoded_lines.append([self.start_token_idx] + encoded + [self.end_token_idx])
+            idx_seq = self.encode(line)
+            encoded_lines.append([self.start_token_idx] + idx_seq + [self.end_token_idx])
         print(f"Finished encoding {len(encoded_lines)} lines\n")
         return encoded_lines
     
-    def decode(self, token_indices, drop_padding=False):
-        if hasattr(token_indices, "tolist"):
-            token_indices = token_indices.tolist()
+    def decode(self, idx_seq, drop_padding=False):
+        if hasattr(idx_seq, "tolist"):
+            idx_seq = idx_seq.tolist()
         else:
-            token_indices = list(token_indices)
+            idx_seq = list(idx_seq)
 
         return ''.join(
             self.idx2token.get(idx, self.oov_token)
-            for idx in token_indices
+            for idx in idx_seq
             if not drop_padding or idx != self.pad_token_idx
         )
 
 class TransformerDataset(Dataset):
     def __init__(self, encoded_lines, context_len,
-                 start_token_idx=1, end_token_idx=2, pad_token_idx=3):
+                 start_token_idx, end_token_idx, pad_token_idx):
         assert len(encoded_lines) >= 1 and context_len >= 1
         assert all(
             len(line) > 2 and

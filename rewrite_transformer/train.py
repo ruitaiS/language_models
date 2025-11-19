@@ -6,7 +6,8 @@ import torch
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
-from transformer import LanguageModel
+from model import LanguageModel
+import generate
 
 def calculate_loss(logits, targets, pad_token_idx=3):
     # In each batch:
@@ -110,9 +111,6 @@ def train_model(model_name,
 
     return model
 
-# TODO: move or delete after testing
-#def reconstruct(idx2token, delimiter, token_idxs):
-#   return delimiter.join([idx2token.get(idx, '<?>') for idx in token_idxs])
 
 # Old Transformer Params:
 '''train_model(model_name = 'trigram_imitation'
@@ -156,8 +154,13 @@ resume_from = 20
 use_gpu = False
 '''
 
-# Hyperparameters:
+# Transformer Parameters:
 context_len = 100
+embedding_dim = 8
+num_layers = 6
+total_heads = 1
+
+# Data Parameters:
 batch_size = 50
 validation_p = 0.1
 shuffle=True
@@ -165,15 +168,15 @@ drop_last=True
 tokenization_method='char'
 include_book=True
 
-
+# Training Parameters:
+lr=5e-5
+weight_decay=0.01
+print_interval=500
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
 processed_lines = data.preprocess_akjv(include_book)
 tokenizer = data.Tokenizer(method=tokenization_method, initialization_text=processed_lines)
 encoded_lines = tokenizer.encode_lines(processed_lines)
-#vocab_size
-#idx2token
-#token2idx
 
 # TODO: Put all this inside a make_loader function
 def make_loader(lines, **kwargs):
@@ -219,4 +222,57 @@ print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")
 # --------------------------------------------------------------------------------------------------------------
 
-#model = LanguageModel(vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads)
+model = LanguageModel(context_len,
+                      embedding_dim,
+                      num_layers,
+                      total_heads,
+                      vocab_size=tokenizer.vocab_size,
+                      pad_token_idx=tokenizer.pad_token_idx)
+model.train()
+
+print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
+for p in model.parameters():
+    p.requires_grad_(True)
+
+optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+print(f"Optimizer: {optimizer}")
+
+# Single Test Pass with Sample x, y
+logits_batch = model(x)
+print(f"Logits.shape: {logits_batch.shape}\n")
+next_token_batch = generate.next_token(logits_batch)
+print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
+print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
+
+
+print(f"Targets.shape: {y.shape}")
+#print(f"Logits: {logits}")
+
+'''
+try:
+    # Training Loss Info
+    #with open(os.path.join(base_path, f'models/{model_name}_tr.txt'), 'w') as f:
+    #    writer = csv.writer(f, delimiter=' ')
+
+        #start = time.time()
+        for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
+            logits = model(X)
+            loss = calculate_loss(X, Y, pad_token_idx)
+            optimizer.zero_grad(set_to_none=True)
+            #optimizer.grad.zero_()
+            loss.backward()
+            #print("Optimizer grad: ", optimizer.grad)
+            clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+
+            #elapsed = time.time() - start
+            #writer.writerow([batch_index, loss.item(), elapsed])
+            if batch_index % print_interval == 1:
+                #seconds = (elapsed / batch_index)*(total_batches - batch_index)
+                #minutes = int(seconds/60)
+                #seconds = int(seconds % 60)
+                #print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. Estimated time remaining: {minutes}m{seconds}s")
+                print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}.")
+except KeyboardInterrupt:
+    pass
+'''

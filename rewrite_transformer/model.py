@@ -198,7 +198,7 @@ class SHA(nn.Module): # Single Head Attention
         #return input.masked_fill(~autoregression_mask, float('-1e9'))
 
 class LanguageModel(nn.Module):
-    def __init__(self, vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads):
+    def __init__(self, context_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
         super().__init__()
 
         # TODO: These need to be stored when saving the model so it can be re-instantiated
