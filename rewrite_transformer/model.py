@@ -105,30 +105,6 @@ class TransformerBlock (nn.Module):
         X += residual
         #print(f"transformer(X) : {X}")
         return X
-    
-class LanguageModelHead(nn.Module):
-    def __init__(self, E):
-        super().__init__()
-        # E is word embeddings from the embedding layer
-        # for the unembedding matrix you can use the embedding matrix transposed
-        # converts a embedding_dim-length embedding back into a vocab_size length raw scores vector
-        # softmax along the vector for a probability distribution
-        # pg. 16-18
-
-        # NOTE: Wonder what happens if you initialize it at E_t
-        # but then trained it seperately
-        # TODO: tf is self.register_buffer? hy not just assign to self.word_embeddings_T directly?
-        self.register_buffer("E_t", E.weight.T)
-        #print('lm head init')
-    def forward(self, X):
-        # X shape = (batch_size, seq_len, embedding_dim)
-        logits = torch.matmul(X, self.E_t) # shape = (batch_size, seq_len, vocab_size)
-
-        # get shape (batch_size, seq_len, vocab_size) list of raw scores (logits) for each batch
-
-        #print(f'lmh logits: {logits}')
-        #print('lm head forward')
-        return logits # shape (batch_size, seq_len, vocab_size)
 
 class MHA(nn.Module): # Multi-Headed Attention
     def __init__(self, d, total_heads, masked = True):
@@ -217,7 +193,6 @@ class LanguageModel(nn.Module):
 
         self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, context_len, pad_token_idx)
         self.transformer_layers = nn.ModuleList([TransformerBlock(embedding_dim, total_heads) for _ in range(num_layers)])
-        #self.lm_head = LanguageModelHead(self.embedding_layer.E)
 
     def forward(self, token_batch):
         # Accepts one batch of tokens of shape (batch_size, seq_len)
@@ -234,7 +209,6 @@ class LanguageModel(nn.Module):
         X, padding_mask = self.embedding_layer(token_batch)
         for layer in self.transformer_layers:
             X = layer(X, padding_mask)
-        logits = torch.matmul(X, self.embedding_layer.E.weight.T) 
-        logits = self.lm_head(X)
+        logits = torch.matmul(X, self.embedding_layer.E.weight.T)
         #print(f"Logits shape: {logits.shape}")
         return logits
