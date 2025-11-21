@@ -11,9 +11,25 @@ def sample(logits_batch):
     probs = F.softmax(logits_batch, dim=-1)
     return torch.distributions.Categorical(probs=probs).sample()
 
+def test_generate(model, tokenizer, prompt=[], response_length=100):
+    start_token_idx = 1 # TODO
+    device = "cuda" # TODO
+
+    model.eval()
+    tokens = torch.tensor([[start_token_idx] + prompt], device=device)
+    for _ in range(response_length):
+        logits = model(tokens)
+        next_token = sample(logits)
+        tokens = torch.cat([tokens, next_token], dim=-1)
+        print(tokenizer.decode(tokens[0].tolist()), end='\r', flush=True)
+    model.train()
+    print("")
+
+
+
 #------------------------------------------------------------------------------------------------
 # TODO (this is directly cut out of the transformer module + needs edits)
-def generate(model, idx2token, prompt= [], response_length=100):
+def _generate(model, idx2token, prompt= [], response_length=100):
     def sample(probabilities):
         # TODO See ch 10; top-k should be easy
         #print(f"Token Probabilities Shape: {probabilities.shape}")

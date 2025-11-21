@@ -156,12 +156,12 @@ use_gpu = False
 
 # Transformer Parameters:
 context_len = 100
-embedding_dim = 8
-num_layers = 6
-total_heads = 1
+embedding_dim = 16
+num_layers = 16
+total_heads = 4
 
 # Data Parameters:
-batch_size = 500
+batch_size = 2000
 validation_p = 0.1
 shuffle=True
 drop_last=True
@@ -169,9 +169,11 @@ tokenization_method='char'
 include_book=True
 
 # Training Parameters:
-lr=5e-5
+epochs = 5
+lr=1e-4 * (batch_size / 2000)
+print_interval=250000 / batch_size
+#print_interval = 1
 weight_decay=0.01
-print_interval=500
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
 processed_lines = data.preprocess_akjv(include_book)
@@ -211,7 +213,10 @@ print(f"Context Length: {context_len}")
 print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
 print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
 
-x, y = next(iter(train_loader)) # Remember x, y here are batches
+print(f"Learning Rate: {lr}")
+print(f"Print Every {print_interval} batches || {print_interval * batch_size } sequences\n")
+
+'''x, y = next(iter(train_loader)) # Remember x, y here are batches
 print(f"Sample x.shape: {x.shape}")
 print(f"Sample y.shape: {y.shape}\n")
 print(f"x[0]:{x[0]}\n")
@@ -219,7 +224,7 @@ print(f"y[0]:{y[0]}\n")
 print(f"x[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{tokenizer.decode(x[0], drop_padding=True)}]\n")
 print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
-print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")
+print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")'''
 # --------------------------------------------------------------------------------------------------------------
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -242,6 +247,39 @@ for p in model.parameters():
 optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 print(f"Optimizer: {optimizer}")
 
+# TODO: Dejankify
+#val_batches = len(val_loader)
+#def validate(model, val_loader):
+#    print(f"Validating over {val_batches} batches:")
+#    for i, (x, y) in enumerate(train_loader):
+
+
+# Test Loop:
+training_batches = len(train_loader)
+#torch.autograd.set_detect_anomaly(True)
+start = time.time()
+for i in range(epochs):
+    for j, (x, y) in enumerate(train_loader):
+        x, y = x.to(device), y.to(device)
+        logits_batch = model(x)
+        loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
+        if (j % print_interval == 0 or j == training_batches-1):
+            print(f"\n Epoch {i+1} / {epochs} || {j} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
+            generate.test_generate(model, tokenizer)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        #clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+
+elapsed = time.time() - start
+print(f"\nElapsed time: {elapsed}")
+print(f"Batch Size: {batch_size} || LR: {lr}")
+print(f"Context Length: {context_len}")
+print(f"Embedding Dimension: {embedding_dim}")
+print(f"Layers: {num_layers}")
+print(f"Heads: {total_heads}\n")
+
+
 # Single Test Pass with Sample x, y
 #logits_batch = model(x)
 #print(f"Logits.shape: {logits_batch.shape}\n")
@@ -249,21 +287,6 @@ print(f"Optimizer: {optimizer}")
 #print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
 #print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
 #print(f"Targets.shape: {y.shape}")
-
-# Test Loop On One Batch:
-x, y = x.to(device), y.to(device)
-#torch.autograd.set_detect_anomaly(True)
-start = time.time()
-for i in range(500):
-    logits_batch = model(x)
-    loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
-    print(f"Iteration {i} || Loss: {loss}")
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    #clip_grad_norm_(model.parameters(), max_norm=1.0)
-    optimizer.step()
-elapsed = time.time() - start
-print(f"Elapsed time: {elapsed}")
 
 
 '''
