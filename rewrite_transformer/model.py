@@ -217,7 +217,7 @@ class LanguageModel(nn.Module):
 
         self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, context_len, pad_token_idx)
         self.transformer_layers = nn.ModuleList([TransformerBlock(embedding_dim, total_heads) for _ in range(num_layers)])
-        self.lm_head = LanguageModelHead(self.embedding_layer.E)
+        #self.lm_head = LanguageModelHead(self.embedding_layer.E)
 
     def forward(self, token_batch):
         # Accepts one batch of tokens of shape (batch_size, seq_len)
@@ -234,6 +234,7 @@ class LanguageModel(nn.Module):
         X, padding_mask = self.embedding_layer(token_batch)
         for layer in self.transformer_layers:
             X = layer(X, padding_mask)
+        logits = torch.matmul(X, self.embedding_layer.E.weight.T) 
         logits = self.lm_head(X)
         #print(f"Logits shape: {logits.shape}")
         return logits
