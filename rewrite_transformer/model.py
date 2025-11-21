@@ -3,15 +3,10 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, embedding_dim, vocab_size, context_len, pad_token_idx):
+    def __init__(self, embedding_dim, vocab_size, seq_len):
         super().__init__()
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # TODO: this is maximally janky
-        #device=torch.device("cpu")
-        self.E = nn.Embedding(vocab_size,embedding_dim).to(device) # word embeddings
-        self.P = nn.Embedding(context_len,embedding_dim).to(device) # position embeddings
-        self.pad_token_idx = pad_token_idx
-        #print('embedding layer init')
+        self.E = nn.Embedding(vocab_size,embedding_dim) # word embeddings
+        self.P = nn.Embedding(seq_len,embedding_dim) # position embeddings
 
     def forward(self, token_batch):
         # Accepts one batch of tokens, shape (batch_size, seq_len)
@@ -20,12 +15,11 @@ class EmbeddingLayer(nn.Module):
 
         batch_size, seq_len = token_batch.shape
         positions = torch.arange(seq_len, device=token_batch.device).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
-        padding_mask = (token_batch != self.pad_token_idx) # keep Trues, mask Falses. Note this is seperate from causal masking
         X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
         #print(f"embedding_layer(tokens): {X}")
 
-        # X.shape = (batch_size, seq_len,embedding_dim) ; padding_mask.shape = (batch_size, seq_len)
-        return X, padding_mask
+        # X.shape = (batch_size, seq_len,embedding_dim)
+        return X
 
 class LayerNorm(nn.Module):
     # TODO: You might want to just use nn.LayerNorm
@@ -73,7 +67,7 @@ class FFN(nn.Module): # Feed Forward Network
 
 class TransformerBlock (nn.Module):
     # TODO: dropout
-    def __init__(self, d, total_heads, masked = True):
+    def __init__(self, d, total_heads):
         super().__init__()
 
         self.norm1 = LayerNorm(d)
@@ -90,14 +84,14 @@ class TransformerBlock (nn.Module):
             nn.Linear)
         '''
 
-        self.mha = MHA(d, total_heads, masked)
+        self.mha = MHA(d, total_heads)
         #print('transformer init')
-    def forward(self, X, padding_mask):
+    def forward(self, X, attention_mask):
         # pg. 10
         # with input x:
         residual = X
         X = self.norm1(X)
-        X = self.mha(X, padding_mask)
+        X = self.mha(X, attention_mask)
         X += residual
         residual = X
         X = self.norm2(X)
@@ -107,37 +101,38 @@ class TransformerBlock (nn.Module):
         return X
 
 class MHA(nn.Module): # Multi-Headed Attention
-    def __init__(self, d, total_heads, masked = True):
+    def __init__(self, d, total_heads):
         super().__init__()
         assert d % total_heads == 0, "d must be divisible by total number of heads"
         self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
-        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, masked) for _ in range(total_heads)])
+        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h) for _ in range(total_heads)])
         self.W_0 = nn.Linear(d, d)
         #print('mha init')
-    def forward(self, X, padding_mask):
-        output = torch.cat([head(X, padding_mask) for head in self.heads], dim=-1)
+    def forward(self, X, attention_mask):
+        output = torch.cat([head(X, attention_mask) for head in self.heads], dim=-1)
         output = self.W_0(output)
         #print(f'mha(X): {output}')
         return output
 
 class SHA(nn.Module): # Single Head Attention
     # d_k and d_v also known as head dimension, d_h, in MHA context
-    def __init__(self, d, d_k, d_v, masked = True):
+    def __init__(self, d, d_k, d_v):
         super().__init__()
-        self.masked = masked
         self.W_Q = nn.Linear(d, d_k)
         self.W_K = nn.Linear(d, d_k)
         self.W_V = nn.Linear(d, d_v)
+        self.d_k = d_k
         #self.W_0 = nn.Linear(d_v, d)
         #print('sha init')
 
-    def forward(self, X, padding_mask):
+    def forward(self, X, attention_mask):
         # X.shape = (batch_size, seq_len, d)
         Q = self.W_Q(X) # Queries Matrix (batch_size, seq_len, d_k)
         K = self.W_K(X) # Keys Matrix (batch_size, seq_len, d_k)
         V = self.W_V(X) # Values Matrix (batch_size, seq_len, d_v)
 
-        weights = F.softmax(self.mask(self.scaled_dot_prod(Q, K), padding_mask), dim=-1)
+        input = self.scaled_dot_prod(Q, K).masked_fill(~attention_mask, float('-1e9'))
+        weights = F.softmax(input, dim=-1)
         product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
         #print('sha forward')
 
@@ -149,49 +144,29 @@ class SHA(nn.Module): # Single Head Attention
         return product
 
     def scaled_dot_prod(self, Q, K):
-        batch_size, seq_len, d_k = Q.shape
-        output = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)
+        print(f"Q.shape: {Q.shape}")
+        #batch_size, seq_len, d_k = Q.shape # TODO: Figure out why the shape changes on last
+        output = torch.matmul(Q, K.transpose(-2, -1)) / (self.d_k ** 0.5)
         # (batch_size,seq_len,seq_len)
         # Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
         # Masking drops the scores for tokens that come after the current one
         return output
 
-    # TODO: Double check if this is flipped the right way
-    # TODO: calculating the mask more than once is TREMENDOUSLY stupid
-    # should really just calculated it once based on the shape of the expected input, and store it
-    def mask (self, input, padding_mask):
-        if not self.masked: return input
-
-        batch_size, rows, cols = input.shape
-        assert rows == cols, f"Matrix is not square: {rows}x{cols}"
-
-        expanded_padding_mask = padding_mask.unsqueeze(1) & padding_mask.unsqueeze(2)
-        autoregression_mask = torch.tril(torch.ones(rows, rows, dtype=torch.bool, device=input.device)).repeat(batch_size, 1, 1)
-
-        '''print(f"Padding Mask Shape: {padding_mask.shape}")
-        print(padding_mask)
-        print(f"Expanded Padding Mask Shape: {expanded_padding_mask.shape}")
-        print(expanded_padding_mask)
-        print(f"Autoregression Mask Shape: {autoregression_mask.shape}")
-        print(autoregression_mask)'''
-
-        return input.masked_fill(~expanded_padding_mask | ~autoregression_mask, float('-1e9'))
-        #return input.masked_fill(~autoregression_mask, float('-1e9'))
-
 class LanguageModel(nn.Module):
-    def __init__(self, context_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
+    def __init__(self, seq_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
         super().__init__()
 
         # TODO: These need to be stored when saving the model so it can be re-instantiated
-        # context_len is the only one that really needs to be read off the model (used by generation function to truncate the input)
+        # seq_len is the only one that really needs to be read off the model (used by generation function to truncate the input)
         self.vocab_size = vocab_size
-        self.context_len = context_len
+        self.seq_len = seq_len
         self.pad_token_idx = pad_token_idx
         self.embedding_dim = embedding_dim
         self.num_layers = num_layers
         self.total_heads = total_heads
+        self.register_buffer("causal_mask", torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool)))
 
-        self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, context_len, pad_token_idx)
+        self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, seq_len)
         self.transformer_layers = nn.ModuleList([TransformerBlock(embedding_dim, total_heads) for _ in range(num_layers)])
 
     def forward(self, token_batch):
@@ -206,9 +181,19 @@ class LanguageModel(nn.Module):
         #    print(' '.join(view))
         #print('')
 
-        X, padding_mask = self.embedding_layer(token_batch)
+        # TODO: Create full mask here
+        # TODO: Cross sequence mask
+        # sequence_mask = [...]
+
+        # padding_mask.shape = (batch_size, seq_len)
+        batch_size, seq_len = token_batch.shape # TODO: fix seq_len / context_len conflation from earlier; remember seq_len <= context_len
+        padding_mask = (token_batch != self.pad_token_idx).view(batch_size, 1, 1, seq_len)
+        causal_mask = self.causal_mask[:seq_len, :seq_len].view(1, 1, seq_len, seq_len)
+        attention_mask = causal_mask & padding_mask
+
+        X = self.embedding_layer(token_batch)
         for layer in self.transformer_layers:
-            X = layer(X, padding_mask)
+            X = layer(X, attention_mask)
         logits = torch.matmul(X, self.embedding_layer.E.weight.T)
         #print(f"Logits shape: {logits.shape}")
         return logits
