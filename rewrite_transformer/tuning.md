@@ -148,8 +148,56 @@ Layers: 16
 Heads: 2
 
 >> 5 epoch run
+ Epoch 5 / 5 || 1953 / 1953 || 3698.765s || Loss: 2.900
+<s>sh Csthnze bilsatasahaosme   s ay ihadanweweoeheeepnasaveNp c aieriD the PI oheslstueth daenHnga th 
+
+Elapsed time: 3700.6347777843475
+Batch Size: 2000 || LR: 0.0001
+Context Length: 100
+Embedding Dimension: 16
+Layers: 16
+Heads: 4
+
+>> embedding dim 8
+
+what's the deal with embedding dim? lowering it also immediately lowers the error? and it seems to be fine?
+
+you basically get something for nothing? lower model complexity and higher performance?
+
+ Epoch 5 / 5 || 1953 / 1953 || 3441.468s || Loss: 3.030
+<s>adtBp sbalBrt  eltuadhe t nes’rf  tfgNn lndwaAlAte z,do ewr e  o hnoed tooiveH nBsI’1denh y ttherotr
+
+Elapsed time: 3443.3155274391174
+Batch Size: 2000 || LR: 0.0001
+Context Length: 100
+Embedding Dimension: 8
+Layers: 16
+Heads: 4
 
 
+----------
+New Baseline:
 
+# Transformer Parameters:
+context_len = 256
+embedding_dim = 512
+num_layers = 6
+total_heads = 8
 
+# Data Parameters:
+batch_size = 192
+validation_p = 0.1
+shuffle=True
+drop_last=True
+tokenization_method='char'
+include_book=True
+
+# Training Parameters:
+epochs = 5
+lr=1e-4 * (batch_size / 64)
+print_interval= 10
+#print_interval = 100 * (64 / batch_size)
+weight_decay=0.1
+
+something very obviously wrong with the model implementation. Maybe i'm impatient. 
 

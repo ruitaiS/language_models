@@ -155,13 +155,13 @@ use_gpu = False
 '''
 
 # Transformer Parameters:
-context_len = 100
-embedding_dim = 16
-num_layers = 16
-total_heads = 4
+context_len = 256
+embedding_dim = 512
+num_layers = 6
+total_heads = 8
 
 # Data Parameters:
-batch_size = 2000
+batch_size = 192
 validation_p = 0.1
 shuffle=True
 drop_last=True
@@ -170,10 +170,10 @@ include_book=True
 
 # Training Parameters:
 epochs = 5
-lr=1e-4 * (batch_size / 2000)
-print_interval=250000 / batch_size
-#print_interval = 1
-weight_decay=0.01
+lr=1e-4 * (batch_size / 64)
+print_interval= 10
+#print_interval = 100 * (64 / batch_size)
+weight_decay=0.1
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
 processed_lines = data.preprocess_akjv(include_book)
