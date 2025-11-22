@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -119,39 +120,20 @@ class SHA(nn.Module): # Single Head Attention
         self.W_Q = nn.Linear(d, d_k)
         self.W_K = nn.Linear(d, d_k)
         self.W_V = nn.Linear(d, d_v)
-        self.d_k = d_k
+        self.scaling = math.sqrt(d_k)
         #self.W_0 = nn.Linear(d_v, d)
         #print('sha init')
 
     def forward(self, X, attention_mask):
-        #print(f"SHA Forward X.shape: {X.shape}")
-        # X.shape = (batch_size, seq_len, d)
         Q = self.W_Q(X) # Queries Matrix (batch_size, seq_len, d_k)
         K = self.W_K(X) # Keys Matrix (batch_size, seq_len, d_k)
         V = self.W_V(X) # Values Matrix (batch_size, seq_len, d_v)
 
-        input = self.scaled_dot_prod(Q, K).masked_fill(~attention_mask, float('-1e9'))
-        weights = F.softmax(input, dim=-1)
-        product = torch.matmul(weights, V) # (batch_size, seq_length, d_v)
-        #print('sha forward')
-
-        # MHA class contains its own W_0 which aggregates across the attention heads
-        # Uncomment below if doing explicitly single headed attention
-        #output = self.W_0(product) # (batch_size, seq_length, d)
-        #output
-
-        #print(f"SHA Forward product.shape: {product.shape}")
-
+        scores = (Q @ K.transpose(-2, -1)) / self.scaling
+        scores = scores.masked_fill(~attention_mask, float('-1e9'))
+        weights = torch.softmax(scores, dim=-1)
+        product = torch.matmul(weights, V)
         return product
-
-    def scaled_dot_prod(self, Q, K):
-        #print(f"Q.shape: {Q.shape}")
-        #batch_size, seq_len, d_k = Q.shape
-        output = torch.matmul(Q, K.transpose(-2, -1)) / (self.d_k ** 0.5)
-        # (batch_size,seq_len,seq_len)
-        # Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
-        # Masking drops the scores for tokens that come after the current one
-        return output
 
 class LanguageModel(nn.Module):
     def __init__(self, context_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
@@ -180,6 +162,10 @@ class LanguageModel(nn.Module):
         key_mask = padding_mask[:, None, :] 
         causal_mask = self.causal_mask[:seq_len, :seq_len]
         attention_mask = causal_mask & query_mask & key_mask
+
+        # Check we're not over-masking
+        valid_rows = attention_mask.any(dim=-1)
+        assert valid_rows.all(), "Error: some attention rows are fully masked!"
 
         # Pass Through Model:
         X = self.embedding_layer(token_batch, seq_len)
