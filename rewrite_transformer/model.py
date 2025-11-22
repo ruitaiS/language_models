@@ -3,19 +3,18 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, embedding_dim, vocab_size, seq_len):
+    def __init__(self, embedding_dim, vocab_size, context_len):
         super().__init__()
         self.E = nn.Embedding(vocab_size,embedding_dim) # word embeddings
-        self.P = nn.Embedding(seq_len,embedding_dim) # position embeddings
+        self.P = nn.Embedding(context_len,embedding_dim) # position embeddings
+        self.register_buffer("positions", torch.arange(context_len).unsqueeze(0))
 
     def forward(self, token_batch):
-        # Accepts one batch of tokens, shape (batch_size, seq_len)
-        # seq_len <= context_len
+        # Accepts one batch of tokens, shape (batch_size, seq_len), where seq_len <= context_len
         # tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
 
-        batch_size, seq_len = token_batch.shape
-        positions = torch.arange(seq_len, device=token_batch.device).unsqueeze(0).repeat(batch_size,1) # >> torch.tensor([0,1,2,3], [0,1,2,3])
-        X = self.E(token_batch) + self.P(positions) # Composite Embeddings (Word + position)
+        _, seq_len = token_batch.shape # TODO: The shape can be passed down, so you're not re-deriving shape every batch
+        X = self.E(token_batch) + self.P(self.positions[:, :seq_len]) # Composite Embeddings (Word + position)
         #print(f"embedding_layer(tokens): {X}")
 
         # X.shape = (batch_size, seq_len,embedding_dim)
@@ -153,24 +152,24 @@ class SHA(nn.Module): # Single Head Attention
         return output
 
 class LanguageModel(nn.Module):
-    def __init__(self, seq_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
+    def __init__(self, context_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
         super().__init__()
 
         # TODO: These need to be stored when saving the model so it can be re-instantiated
-        # seq_len is the only one that really needs to be read off the model (used by generation function to truncate the input)
+        # context_len is the only one that really needs to be read off the model (used by generation function to truncate the input)
         self.vocab_size = vocab_size
-        self.seq_len = seq_len
+        self.context_len = context_len
         self.pad_token_idx = pad_token_idx
         self.embedding_dim = embedding_dim
         self.num_layers = num_layers
         self.total_heads = total_heads
-        self.register_buffer("causal_mask", torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool)))
+        self.register_buffer("causal_mask", torch.tril(torch.ones(context_len, context_len, dtype=torch.bool)))
 
-        self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, seq_len)
+        self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, context_len)
         self.transformer_layers = nn.ModuleList([TransformerBlock(embedding_dim, total_heads) for _ in range(num_layers)])
 
     def forward(self, token_batch):
-        # Accepts one batch of tokens of shape (batch_size, seq_len)
+        # Accepts one batch of tokens of shape (batch_size, seq_len), where seq_len <= context_len
         #token_batch = np.array(token_batch.tolist()) # Should already be np.array out of the data.batch()
         #token_batch = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(token_batch)
         #token_batch = torch.tensor(token_batch, dtype=torch.long)

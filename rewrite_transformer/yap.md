@@ -189,6 +189,10 @@ alternatively, you can join all the lines, and just slide the context window acr
 
 worth experimenting, and tbh you should probably read up on the existing literature on this stuff. i feel like you re-invent the wheel a lot b/c you want to try everything yourself and it's good as a learning exercise but sometimes not very time-efficient, and you realize later (as in the case of BPE) that you were doing something quite foolish
 
+---
+
+rn you're always producing full length sequence batches by padding at getitem time - consider a similar approach to what you did during RNNs, which is to have a variable sequence length for the batch, and only pad out the shorter batches. model `forward()` has the capacity to handle batches of varying sequence (assuming the whole batch has the same length; you don't want to get too in the weeds with per-sequence length b/c you lose the ability to operate across the batch)
+
 ### hf style packing + masking
 
 this is a really clever approach here:
