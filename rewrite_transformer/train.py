@@ -9,7 +9,7 @@ from torch.nn.utils import clip_grad_norm_
 from model import LanguageModel
 import generate
 
-def calculate_loss(logits, targets, pad_token_idx=3):
+def calculate_loss(loss_function, logits, targets):
     # In each batch:
     # logits shape (batch_size, seq_len, vocab_size)
     # targets shape (batch_size, seq_len)
@@ -22,137 +22,11 @@ def calculate_loss(logits, targets, pad_token_idx=3):
     # We want to unroll these into two batch_size * seq_len lists, so that:
     # Each element of flattened_logits is a logits vector
     # Each element of flattened_targets is a token index
-    loss_func = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=pad_token_idx)
+    
     flattened_logits = logits.view(-1, logits.shape[-1])
     flattened_targets = targets.view(-1)
-    return loss_func(flattened_logits, flattened_targets)
+    return loss_function(flattened_logits, flattened_targets)
 
-def train_model(model_name,
-                batch_size,
-                context_len,
-                embedding_dim,
-                num_layers,
-                total_heads):
-    
-    # Pulled from LanguageModel forward pass
-    '''
-            if targets is not None:
-                # View Tokens flowing through:
-                #for seq in targets:
-                #    view = [self.idx2token[token.item()] for token in seq]
-                #    print(' '.join(view))
-                #print('')
-
-            #    print(f"Targets Shape: {targets.shape}")
-                #targets = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(targets)
-                #targets = torch.tensor(targets, dtype=torch.long)
-                loss = self.calculate_loss(logits, targets)
-            else:
-                loss = None
-            return logits, loss
-    '''
-
-
-    # TODO
-    #dataset = data.get_dataset('train', dataset_id)
-    #aux_data = data.extract_aux(dataset)
-
-    pad_token_idx, idx2token, token2idx = None # TODO
-
-    model = LanguageModel( vocab_size, pad_token_idx, context_len, embedding_dim, num_layers, total_heads)
-    model.train()
-
-    print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
-    for p in model.parameters():
-        p.requires_grad_(True)
-        #p.requires_grad = True
-
-    optimizer = AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
-    print(f"Optimizer: {optimizer}")
-
-    input_batches, target_batches = data.batch(batch_size, context_len, dataset)
-    total_batches = len(input_batches)
-    print_interval = 500
-
-    try:
-        # Training Loss Info
-        #with open(os.path.join(base_path, f'models/{model_name}_tr.txt'), 'w') as f:
-        #    writer = csv.writer(f, delimiter=' ')
-
-            #start = time.time()
-            for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
-                logits = model(X)
-                loss = calculate_loss(X, Y, pad_token_idx)
-                optimizer.zero_grad(set_to_none=True)
-                #optimizer.grad.zero_()
-                loss.backward()
-                #print("Optimizer grad: ", optimizer.grad)
-                clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optimizer.step()
-
-                #elapsed = time.time() - start
-                #writer.writerow([batch_index, loss.item(), elapsed])
-                if batch_index % print_interval == 1:
-                    #seconds = (elapsed / batch_index)*(total_batches - batch_index)
-                    #minutes = int(seconds/60)
-                    #seconds = int(seconds % 60)
-                    #print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. Estimated time remaining: {minutes}m{seconds}s")
-                    print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}.")
-    except KeyboardInterrupt:
-        #f.close()
-        torch.save(model.state_dict(), os.path.join(base_path, f"models/{model_name}.pth"))
-        with open(os.path.join(base_path, f"models/{model_name}_params.json"), 'w') as f:
-            json.dump(model_params, f, indent=4)
-
-    f.close()
-    torch.save(model.state_dict(), os.path.join(base_path, f"models/{model_name}.pth"))
-    with open(os.path.join(base_path, f"models/{model_name}_params.json"), 'w') as f:
-        json.dump(model_params, f, indent=4)
-
-    return model
-
-
-# Old Transformer Params:
-'''train_model(model_name = 'trigram_imitation'
-dataset_id = 1741140596
-batch_size = 16
-context_len = 3
-embedding_depth = 8
-num_layers = 6
-total_heads = 1
-masked = True)'''
-
-#RNN Params Copied from rnn/train.py:
-'''
-# parameters ----------------------------------------------
-# model:
-embedding_dim = 64
-hidden_dim = 512
-lstm_layers = 3
-embedding_dropout = 0.15
-lstm_dropout = 0.3
-fc_dropout = 0.3
-lr = 0.001
-#betas=(0.9, 0.95)
-#weight_decay=0.01
-
-# batching:
-batch_size = 50
-seq_len = 100
-validation_p = 0.1
-tokenization='char'
-include_book=True
-shuffle = True
-style='encoded_lines'
-pad_token='<>'
-
-# training:
-reset_each = 'batch' # epoch
-clip_grad=1
-epochs = 30
-resume_from = 20
-use_gpu = False
-'''
 
 # Transformer Parameters:
 context_len = 256
@@ -244,76 +118,32 @@ print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
 for p in model.parameters():
     p.requires_grad_(True)
 
+# Optimizer + Loss Function Definition
 optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 print(f"Optimizer: {optimizer}")
+loss_func = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=tokenizer.pad_token_idx)
 
-# TODO: Dejankify
-#val_batches = len(val_loader)
-#def validate(model, val_loader):
-#    print(f"Validating over {val_batches} batches:")
-#    for i, (x, y) in enumerate(train_loader):
-
-
-# Test Loop:
+# Train Loop:
 training_batches = len(train_loader)
-#torch.autograd.set_detect_anomaly(True)
 start = time.time()
 for i in range(epochs):
     for j, (x, y) in enumerate(train_loader):
         x, y = x.to(device), y.to(device)
         logits_batch = model(x)
-        loss = calculate_loss(logits_batch, y, tokenizer.pad_token_idx)
+        loss = calculate_loss(loss_func, logits_batch, y)
         if (j % print_interval == 0 or j == training_batches-1):
+            # TODO: Avg. Loss Over Validation Set
             print(f"\n Epoch {i+1} / {epochs} || {j} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             generate.test_generate(model, tokenizer)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
-        #clip_grad_norm_(model.parameters(), max_norm=1.0)
+        clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
 
 elapsed = time.time() - start
-print(f"\nElapsed time: {elapsed}")
+print(f"\nTotal Elapsed time: {elapsed}")
 print(f"Batch Size: {batch_size} || LR: {lr}")
 print(f"Sequence (Context) Length: {context_len}")
 print(f"Embedding Dimension: {embedding_dim}")
 print(f"Layers: {num_layers}")
 print(f"Heads: {total_heads}\n")
-
-
-# Single Test Pass with Sample x, y
-#logits_batch = model(x)
-#print(f"Logits.shape: {logits_batch.shape}\n")
-#next_token_batch = generate.sample(logits_batch)
-#print(f"next_token_batch.shape: {next_token_batch.shape} || {next_token_batch}")
-#print(f"Decoded: {[(idx_seq.tolist(), tokenizer.decode(idx_seq)) for idx_seq in next_token_batch]}")
-#print(f"Targets.shape: {y.shape}")
-
-
-'''
-try:
-    # Training Loss Info
-    #with open(os.path.join(base_path, f'models/{model_name}_tr.txt'), 'w') as f:
-    #    writer = csv.writer(f, delimiter=' ')
-
-        #start = time.time()
-        for batch_index, (X, Y) in enumerate(zip(input_batches, target_batches)):
-            logits = model(X)
-            loss = calculate_loss(X, Y, pad_token_idx)
-            optimizer.zero_grad(set_to_none=True)
-            #optimizer.grad.zero_()
-            loss.backward()
-            #print("Optimizer grad: ", optimizer.grad)
-            clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
-
-            #elapsed = time.time() - start
-            #writer.writerow([batch_index, loss.item(), elapsed])
-            if batch_index % print_interval == 1:
-                #seconds = (elapsed / batch_index)*(total_batches - batch_index)
-                #minutes = int(seconds/60)
-                #seconds = int(seconds % 60)
-                #print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}. Estimated time remaining: {minutes}m{seconds}s")
-                print(f"Batch {batch_index} of {total_batches}. Loss: {loss:.2f}.")
-except KeyboardInterrupt:
-    pass
-'''

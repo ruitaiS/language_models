@@ -9,11 +9,9 @@ class EmbeddingLayer(nn.Module):
         self.P = nn.Embedding(context_len,embedding_dim) # position embeddings
         self.register_buffer("positions", torch.arange(context_len).unsqueeze(0))
 
-    def forward(self, token_batch):
+    def forward(self, token_batch, seq_len):
         # Accepts one batch of tokens, shape (batch_size, seq_len), where seq_len <= context_len
         # tokens = torch.tensor([1, 2, 3, 4], [5, 6, 7, 8]) >> tokens.shape = (2, 4)
-
-        _, seq_len = token_batch.shape # TODO: The shape can be passed down, so you're not re-deriving shape every batch
         X = self.E(token_batch) + self.P(self.positions[:, :seq_len]) # Composite Embeddings (Word + position)
         #print(f"embedding_layer(tokens): {X}")
 
@@ -173,29 +171,19 @@ class LanguageModel(nn.Module):
         self.transformer_layers = nn.ModuleList([TransformerBlock(embedding_dim, total_heads) for _ in range(num_layers)])
 
     def forward(self, token_batch):
-        # Accepts one batch of tokens of shape (batch_size, seq_len), where seq_len <= context_len
-        #token_batch = np.array(token_batch.tolist()) # Should already be np.array out of the data.batch()
-        #token_batch = np.vectorize(lambda token: self.token2idx.get(token, self.token2idx['<?>']))(token_batch)
-        #token_batch = torch.tensor(token_batch, dtype=torch.long)
-
-        # View Tokens flowing through:
-        #for seq in token_batch:
-        #    view = [self.idx2token[token.item()] for token in seq]
-        #    print(' '.join(view))
-        #print('')
-
         # Create attention mask
         # TODO: add cross sequence mask
         # sequence_mask = [...]
-
         _, seq_len = token_batch.shape
         padding_mask = (token_batch != self.pad_token_idx)
+        query_mask = padding_mask[:, :, None]
+        key_mask = padding_mask[:, None, :] 
         causal_mask = self.causal_mask[:seq_len, :seq_len]
-        attention_mask = causal_mask & padding_mask[:, None, :]
+        attention_mask = causal_mask & query_mask & key_mask
 
-        X = self.embedding_layer(token_batch)
+        # Pass Through Model:
+        X = self.embedding_layer(token_batch, seq_len)
         for layer in self.transformer_layers:
             X = layer(X, attention_mask)
         logits = torch.matmul(X, self.embedding_layer.E.weight.T)
-        #print(f"Logits shape: {logits.shape}")
         return logits
