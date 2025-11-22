@@ -23,9 +23,16 @@ def calculate_loss(loss_function, logits, targets):
     # Each element of flattened_logits is a logits vector
     # Each element of flattened_targets is a token index
     
-    flattened_logits = logits.view(-1, logits.shape[-1])
-    flattened_targets = targets.view(-1)
-    return loss_function(flattened_logits, flattened_targets)
+    flat_logits = logits.view(-1, logits.shape[-1])
+    flat_targets = targets.view(-1)
+
+    print("logits stats: min", logits.min().item(),
+      "max", logits.max().item(),
+      "mean", logits.mean().item(),
+      "std", logits.std().item())
+    print("targets range:", flat_targets.min().item(), "to", flat_targets.max().item())
+
+    return loss_function(flat_logits, flat_targets)
 
 
 # Transformer Parameters:
@@ -45,7 +52,7 @@ include_book=True
 # Training Parameters:
 epochs = 5
 lr=1e-4 * (batch_size / 64)
-print_interval= 10
+print_interval= 100
 #rint_interval = 100 * (64 / batch_size)
 weight_decay=0.1
 
@@ -101,7 +108,7 @@ print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
 print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")'''
 # --------------------------------------------------------------------------------------------------------------
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
 #device= torch.device("cpu")
 print(f"Device: {device}\n")
 
@@ -134,7 +141,7 @@ for i in range(epochs):
         if (j < 5 or j % print_interval == 0 or j == training_batches-1):
             # TODO: Avg. Loss Over Validation Set
             print(f"\n Epoch {i+1} / {epochs} || {j} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
-            generate.test_generate(model, tokenizer)
+            #generate.test_generate(model, tokenizer)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         clip_grad_norm_(model.parameters(), max_norm=1.0)

@@ -163,7 +163,7 @@ class LanguageModel(nn.Module):
 
         # Pass Through Model:
         X = self.embedding_layer(token_batch, seq_len)
-        for layer in self.transformer_layers:
-            X = layer(X, attention_mask)
+        #for layer in self.transformer_layers:
+        #    X = layer(X, attention_mask)
         logits = torch.matmul(X, self.embedding_layer.E.weight.T)
         return logits
