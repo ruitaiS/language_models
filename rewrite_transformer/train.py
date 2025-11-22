@@ -155,13 +155,13 @@ use_gpu = False
 '''
 
 # Transformer Parameters:
-seq_len = 128
-embedding_dim = 256
-num_layers = 3
+context_len = 256
+embedding_dim = 512
+num_layers = 6
 total_heads = 8
 
 # Data Parameters:
-batch_size = 32
+batch_size = 192
 validation_p = 0.1
 shuffle=True
 drop_last=True
@@ -172,7 +172,7 @@ include_book=True
 epochs = 5
 lr=1e-4 * (batch_size / 64)
 print_interval= 10
-#print_interval = 100 * (64 / batch_size)
+#rint_interval = 100 * (64 / batch_size)
 weight_decay=0.1
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ encoded_lines = tokenizer.encode_lines(processed_lines)
 def make_loader(lines, **kwargs):
     pass
 # Loader Initialization ------------------------------------------------------------------------------------
-akjv_dataset = data.TransformerDataset(encoded_lines, seq_len,
+akjv_dataset = data.TransformerDataset(encoded_lines, context_len,
                                        start_token_idx=tokenizer.start_token_idx,
                                        end_token_idx=tokenizer.end_token_idx,
                                        pad_token_idx=tokenizer.pad_token_idx)
@@ -209,7 +209,7 @@ val_loader = torch.utils.data.DataLoader(
     drop_last=drop_last)
 
 print(f"Batch Size: {batch_size} || Drop Last Incomplete Batch: {drop_last}")
-print(f"Sequence (Context) Length: {seq_len}")
+print(f"Context Length: {context_len}")
 print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
 print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
 
@@ -231,7 +231,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device= torch.device("cpu")
 print(f"Device: {device}\n")
 
-model = LanguageModel(seq_len,
+model = LanguageModel(context_len,
                       embedding_dim,
                       num_layers,
                       total_heads,
@@ -274,7 +274,7 @@ for i in range(epochs):
 elapsed = time.time() - start
 print(f"\nElapsed time: {elapsed}")
 print(f"Batch Size: {batch_size} || LR: {lr}")
-print(f"Sequence (Context) Length: {seq_len}")
+print(f"Sequence (Context) Length: {context_len}")
 print(f"Embedding Dimension: {embedding_dim}")
 print(f"Layers: {num_layers}")
 print(f"Heads: {total_heads}\n")

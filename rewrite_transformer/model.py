@@ -97,6 +97,7 @@ class TransformerBlock (nn.Module):
         X = self.ffn(X)
         X += residual
         #print(f"transformer(X) : {X}")
+        #print(f"Transformer Block Output Shape: {X.shape}")
         return X
 
 class MHA(nn.Module): # Multi-Headed Attention
@@ -125,6 +126,7 @@ class SHA(nn.Module): # Single Head Attention
         #print('sha init')
 
     def forward(self, X, attention_mask):
+        #print(f"SHA Forward X.shape: {X.shape}")
         # X.shape = (batch_size, seq_len, d)
         Q = self.W_Q(X) # Queries Matrix (batch_size, seq_len, d_k)
         K = self.W_K(X) # Keys Matrix (batch_size, seq_len, d_k)
@@ -140,11 +142,13 @@ class SHA(nn.Module): # Single Head Attention
         #output = self.W_0(product) # (batch_size, seq_length, d)
         #output
 
+        #print(f"SHA Forward product.shape: {product.shape}")
+
         return product
 
     def scaled_dot_prod(self, Q, K):
-        print(f"Q.shape: {Q.shape}")
-        #batch_size, seq_len, d_k = Q.shape # TODO: Figure out why the shape changes on last
+        #print(f"Q.shape: {Q.shape}")
+        #batch_size, seq_len, d_k = Q.shape
         output = torch.matmul(Q, K.transpose(-2, -1)) / (self.d_k ** 0.5)
         # (batch_size,seq_len,seq_len)
         # Each token in a sequence is replaced with a vector showing attention scores for every other spot in the sequence
@@ -180,15 +184,14 @@ class LanguageModel(nn.Module):
         #    print(' '.join(view))
         #print('')
 
-        # TODO: Create full mask here
-        # TODO: Cross sequence mask
+        # Create attention mask
+        # TODO: add cross sequence mask
         # sequence_mask = [...]
 
-        # padding_mask.shape = (batch_size, seq_len)
-        batch_size, seq_len = token_batch.shape # TODO: fix seq_len / context_len conflation from earlier; remember seq_len <= context_len
-        padding_mask = (token_batch != self.pad_token_idx).view(batch_size, 1, 1, seq_len)
-        causal_mask = self.causal_mask[:seq_len, :seq_len].view(1, 1, seq_len, seq_len)
-        attention_mask = causal_mask & padding_mask
+        _, seq_len = token_batch.shape
+        padding_mask = (token_batch != self.pad_token_idx)
+        causal_mask = self.causal_mask[:seq_len, :seq_len]
+        attention_mask = causal_mask & padding_mask[:, None, :]
 
         X = self.embedding_layer(token_batch)
         for layer in self.transformer_layers:
