@@ -121,8 +121,6 @@ class SHA(nn.Module): # Single Head Attention
         self.W_K = nn.Linear(d, d_k)
         self.W_V = nn.Linear(d, d_v)
         self.scaling = math.sqrt(d_k)
-        #self.W_0 = nn.Linear(d_v, d)
-        #print('sha init')
 
     def forward(self, X, attention_mask):
         Q = self.W_Q(X) # Queries Matrix (batch_size, seq_len, d_k)
@@ -162,10 +160,6 @@ class LanguageModel(nn.Module):
         key_mask = padding_mask[:, None, :] 
         causal_mask = self.causal_mask[:seq_len, :seq_len]
         attention_mask = causal_mask & query_mask & key_mask
-
-        # Check we're not over-masking
-        valid_rows = attention_mask.any(dim=-1)
-        assert valid_rows.all(), "Error: some attention rows are fully masked!"
 
         # Pass Through Model:
         X = self.embedding_layer(token_batch, seq_len)

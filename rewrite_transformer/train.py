@@ -131,7 +131,7 @@ for i in range(epochs):
         x, y = x.to(device), y.to(device)
         logits_batch = model(x)
         loss = calculate_loss(loss_func, logits_batch, y)
-        if (j % print_interval == 0 or j == training_batches-1):
+        if (j < 5 or j % print_interval == 0 or j == training_batches-1):
             # TODO: Avg. Loss Over Validation Set
             print(f"\n Epoch {i+1} / {epochs} || {j} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             generate.test_generate(model, tokenizer)

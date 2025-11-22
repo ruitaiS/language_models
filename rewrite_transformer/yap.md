@@ -1,3 +1,16 @@
+### padding mask + causal mask issue
+
+at certain positions on each sequence - the sections within the padded portion - all the indices that come before are masked because of padding, and everything that comes after are masked by causal, so there's nothing in the entire sequence for that position to pay attention to.
+
+this causes a problem if we use `-inf` instead of `- big number` in the code below, because it breaks softmax
+
+```
+scores = scores.masked_fill(~attention_mask, float('-1e9'))
+weights = torch.softmax(scores, dim=-1)
+```
+
+there's a couple ways to fix this, using right-pad and only masking keys, or using the hugging-face style chunking / sequence masking, but until you do one of those, just use `-1e9` and tell the loss function to ignore losess on pad tokens
+
 ### responsibility seperation
 
 tokenizer concerns (tokenization schema, idx2token and token2idx) should be kept seperate from the model
