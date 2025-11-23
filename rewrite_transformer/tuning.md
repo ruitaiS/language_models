@@ -261,3 +261,30 @@ Epoch 1 / 5 || 20200 / 20360 || 9214.191s || Loss: 0.462
 ```
 
 after the second epoch, the loss drop slows down a lot. will need to look at the validation losses to be sure.
+
+
+---
+```
+ Epoch 1 / 5 || 6100 / 20360 || 2776.396s || Loss: 0.816
+<s>Numbers      And the priest spoke to Nob, Speak concerning the children of Israel, saying, This is the LORD of hosts, that every one of Israel: and let go down their land to asses the land, saying, kindness and servant with persons of flock of them, which are his dream.</s>
+
+
+ Epoch 1 / 5 || 6200 / 20360 || 2820.776s || Loss: 0.812
+<s>Ecclesiastes Surely there is I better a lace of the reason of a rebellious pit, both in heaven, choose can of ealance: and I have sinned against any worked that the gospel of the LORD is that a man, despect to possess, that a man ain among the Egyptian from the over against almond by the Son of God.</s>
+
+
+ Epoch 1 / 5 || 6300 / 20360 || 2865.687s || Loss: 0.799
+<s>2 Kings      Then Jehoash slew the kings of Israel, and Amaziah, and his servants, and went out to Jerusalem, and slew him, and said to him, Come to you, I am humbled you, and come you to meet you to rest: all the days children, and will destroy the days that you have devoured you.</s>
+```
+
+Fixed issue with not being able to generate longer sequences than the context length >> starting to see the sequences end on `</s>` more consistently. Still probably would be improved by better data packaging, but it's good to know it does learn to generate the end token
+
+but honestly the results so far are really underwhelming and a little discouraging. it's not a huge improvement over the LSTM - like the LSTM model, the spelling and grammar are generally correct, but none of the sentences it spits out really mean anything :(
+
+maybe switch to word-level or bpe tokenization to capture more high level structure?
+
+it's also slow, which isn't indicative of a problem necessarily, but its just adding to the general feeling of butting up against a wall. the performance improvement from the gpu seems to be spent on being able to train a deeper model, and yes it's learning more from fewer examples, but the end result is that it's still taking a long ass time to chew through the dataset. ik it's deceptively slow, because the transformer model is several orders of magnitude more complex than the LSTM, but just from a perceptual standpoint it's annoying b/c you expect it to run faster after dumping all this money into a gpu.
+
+maybe the model is too complex for the dataset? maybe we're already pushing against what can be gleaned from this corpus, so you're seeing similar results across models? it's ultimately not an incredibly varied text. validation tests should confirm/deny this i think; if we keep seeing test loss go down but validation loss plateau, you know it's overfitting.
+
+idk. pretty frustrated tbh. was really hoping for better.
