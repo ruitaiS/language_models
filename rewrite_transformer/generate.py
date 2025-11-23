@@ -9,8 +9,6 @@ def sample(logits_batch):
     return torch.distributions.Categorical(probs=probs).sample()
 
 def test_generate(model, tokenizer, prompt=[], max_length=500):
-    max_length = min(model.context_len, max_length) # TODO: Handle generation past the context length (rn it crashes)
-
     model.eval()
     tokens = torch.tensor([[tokenizer.start_token_idx] + prompt], device=model.device())
     for _ in range(max_length):

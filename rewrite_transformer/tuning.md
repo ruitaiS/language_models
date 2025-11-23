@@ -219,3 +219,45 @@ for 5 epochs, you're dropping about an hour and a half over the total training t
 ```
 
 I mean it sounds biblical, spelling is good, but it still doesn't *mean* anything :(((
+
+
+---
+
+lowered dropout to 0.1 from 0.5 and it learns much faster. 5000 batches and it's already lower loss than a full epoch of training than earlier.
+
+but:
+
+`<s>Genesis      Eood the table of the form in of the sons of me, the morrows of the temple of the men of the chief of Judah carried me by the delivations, and the daughters were accepted of the crown in the days of the fraen which came to her strong him, and told`
+
+The dataloader isn't set up properly. If you think about it, for every line, you get length-1 samples out of it, but you only get ONE instance with an end token
+
+should switch to packed sequences and inter-sequence masking?
+
+```
+Epoch 1 / 5 || 20200 / 20360 || 9214.191s || Loss: 0.462
+<s>Ezekiel      These are they that swore about their wings, and spoke, saying, If a man die, and if a man die, shall swear by the sword and say to the hand of the LORD,  peace, and shall swear by his side, and shall die of Joseph, with a whirlwind: for they are s
+
+
+ Epoch 1 / 5 || 20300 / 20360 || 9258.086s || Loss: 0.492
+<s>Leviticus    Speak to the children of Israel, saying, If a house bring a ram without blemish out of the house of bondage of the ministry of Aaron and of his sons, then shall you put off the inner chambers of the children of Israel to the door, and pour out yo
+
+
+ Epoch 1 / 5 || 20360 / 20360 || 9285.107s || Loss: 0.459
+<s>1 Chronicles And Jehiel the son of Nethaniah, the second of Ahithophel, the son of Mattaniah, which was at Beersheba, Shebaniah the son of Berechiah the son of Maaseiah the mother of Saccar, the elders of the people, and went up all the people to Aphah the
+
+...
+
+ Epoch 2 / 5 || 20200 / 20360 || 18200.955s || Loss: 0.331
+<s>Isaiah       When you cry, let your companies be ashamed, but not ashamed, in the day of your companions and the strong holds: for shall the daughters of your sore be comforted, so that you shall possess the land of Egypt to come down to destroy, lest you make y
+
+
+ Epoch 2 / 5 || 20300 / 20360 || 18244.962s || Loss: 0.310
+<s>1 Chronicles Now David had said also to Solomon, The LORD has reigned on a secret of king David my servant David my servant, the son of Hadadezer has son not whom the LORD swore to give him a lambs of the sons of Hadadezer, to the rest of the Philistines, 
+
+
+ Epoch 2 / 5 || 20360 / 20360 || 18272.023s || Loss: 0.316
+<s>1 Chronicles And the sons of Tola; Uzzi, and Rephaiah, and Jibnai, and Jerimoth, and Shemiramoth, and Uzziel, and Carcas, and Jozabad, and Eliezer, and Jalthi the son of Shuni, had the sons of Milcom, together, to the chambers and the house of the priests 
+
+```
+
+after the second epoch, the loss drop slows down a lot. will need to look at the validation losses to be sure.

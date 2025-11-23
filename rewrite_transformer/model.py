@@ -124,6 +124,7 @@ class LanguageModel(nn.Module):
         # Create attention mask
         # TODO: add cross sequence mask
         # sequence_mask = [...]
+        token_batch = token_batch[:, -self.context_len:]
         _, seq_len = token_batch.shape
         padding_mask = (token_batch != self.pad_token_idx)
         query_mask = padding_mask[:, :, None]

@@ -104,19 +104,30 @@ print(f"Optimizer: {optimizer}")
 
 # Train Loop:
 training_batches = len(train_loader)
+val_batches = len(val_loader)
 start = time.time()
 for epoch_number in range(epochs):
     for batch_number, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.to(device), targets.to(device)
         logits = model(inputs)
-
         flattened_logits = logits.view(batch_size*context_len, tokenizer.vocab_size)
         flattened_targets = targets.view(batch_size*context_len).long()
         loss = criterion(flattened_logits, flattened_targets)
         if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
-            # TODO: Avg. Loss Over Validation Set
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             generate.test_generate(model, tokenizer)
+
+        # TODO: Validation Testing (Memory issue; its trying to hold both training and validation data at once)
+        '''if (batch_number % validation_interval == 0 or batch_number == training_batches-1):
+            model.eval()
+            acc_loss = 0
+            for v_inputs, v_targets in val_loader:
+                v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
+                v_logits = model(v_inputs)
+                acc_loss += criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long())
+            mean_val_loss = acc_loss / val_batches
+            print(f"Mean Validation Loss: {mean_val_loss}")
+            model.train()'''
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         clip_grad_norm_(model.parameters(), max_norm=max_norm)
