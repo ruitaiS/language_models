@@ -201,3 +201,21 @@ weight_decay=0.1
 
 something very obviously wrong with the model implementation. Maybe i'm impatient. 
 
+---
+
+Post-simplification + adding dropout, about 5seconds faster for 100 batches, but the loss is MASSIVELY decreased. Single digits after 300 batches, whereas before it took I think several epochs!
+
+for 5 epochs, you're dropping about an hour and a half over the total training time too
+
+```
+ Epoch 1 / 5 || 20200 / 20360 || 8903.089s || Loss: 0.898
+<s>Deuteronomy  Whereas any band went on the throne of your side, and stay their nobles to the LORD your
+
+ Epoch 1 / 5 || 20300 / 20360 || 8946.588s || Loss: 0.910
+<s>Joshua       Now therefore, I called you in the wilderness of Jordan and his mighty men and your jewels, o
+
+ Epoch 1 / 5 || 20360 / 20360 || 8972.880s || Loss: 0.884
+<s>Deuteronomy  But of your maiden go, and he shall bring it into the first year, and listen nor for eve
+```
+
+I mean it sounds biblical, spelling is good, but it still doesn't *mean* anything :(((

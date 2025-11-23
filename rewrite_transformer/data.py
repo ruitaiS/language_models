@@ -6,8 +6,6 @@ import torch
 from torch.utils.data import Dataset
 from nltk.tokenize import RegexpTokenizer
 
-base_path = os.path.dirname(os.path.abspath(__file__))
-
 def preprocess_akjv(include_book=True):
     source_filepath = os.path.join('..', 'datasets', 'akjv.txt')
     # utf-8-sig strips leading BOM char

@@ -9,37 +9,20 @@ from torch.nn.utils import clip_grad_norm_
 from model import LanguageModel
 import generate
 
-def calculate_loss(loss_function, logits, targets):
-    # In each batch:
-    # logits shape (batch_size, seq_len, vocab_size)
-    # targets shape (batch_size, seq_len)
-    # Think of these as two batch_size, seq_len matrices
-    # logits contains a vocab length logits vector in each entry
-    # while targets simply contains a token index
-    # The logits vectors from one matrix are trying to predict the corresponding token indices in the other.
-
-    # For nn.CrossEntropyLoss:
-    # We want to unroll these into two batch_size * seq_len lists, so that:
-    # Each element of flattened_logits is a logits vector
-    # Each element of flattened_targets is a token index
-    
-    flat_logits = logits.view(-1, logits.shape[-1])
-    flat_targets = targets.view(-1)
-
-    #print("logits stats: min", logits.min().item(),
-    #  "max", logits.max().item(),
-    #  "mean", logits.mean().item(),
-    #  "std", logits.std().item())
-    #print("targets range:", flat_targets.min().item(), "to", flat_targets.max().item())
-
-    return loss_function(flat_logits, flat_targets)
-
-
 # Transformer Parameters:
 context_len = 256
 embedding_dim = 512
 num_layers = 6
 total_heads = 8
+
+# TODO: Use these (rn they're defined within the LM itself)
+ffn_expansion_ratio = 4
+dropout_params = {
+    "embedding_dropout":0.1,
+    "post_mha_dropout": 0.1,
+    "post_ffn_dropout": 0.1,
+    "attention_head_dropout": 0.1,
+}
 
 # Data Parameters:
 batch_size = 192
@@ -50,20 +33,19 @@ tokenization_method='char'
 include_book=True
 
 # Training Parameters:
-epochs = 5
 lr=1e-4 * (batch_size / 64)
+max_norm = 1.0
 print_interval= 100
+validation_interval = 500
 #rint_interval = 100 * (64 / batch_size)
 weight_decay=0.1
+epochs = 5
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
 processed_lines = data.preprocess_akjv(include_book)
 tokenizer = data.Tokenizer(method=tokenization_method, initialization_text=processed_lines)
 encoded_lines = tokenizer.encode_lines(processed_lines)
 
-# TODO: Put all this inside a make_loader function
-def make_loader(lines, **kwargs):
-    pass
 # Loader Initialization ------------------------------------------------------------------------------------
 akjv_dataset = data.TransformerDataset(encoded_lines, context_len,
                                        start_token_idx=tokenizer.start_token_idx,
@@ -96,16 +78,6 @@ print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * le
 
 print(f"Learning Rate: {lr}")
 print(f"Print Every {print_interval} batches || {print_interval * batch_size } sequences\n")
-
-'''x, y = next(iter(train_loader)) # Remember x, y here are batches
-print(f"Sample x.shape: {x.shape}")
-print(f"Sample y.shape: {y.shape}\n")
-print(f"x[0]:{x[0]}\n")
-print(f"y[0]:{y[0]}\n")
-print(f"x[0] Reconstructed (Bracketed, Padding Stripped):")
-print(f"[{tokenizer.decode(x[0], drop_padding=True)}]\n")
-print(f"y[0] Reconstructed (Bracketed, Padding Stripped):")
-print(f"[{tokenizer.decode(y[0], drop_padding=True)}]\n")'''
 # --------------------------------------------------------------------------------------------------------------
 
 device = torch.device("cuda")
@@ -127,24 +99,27 @@ for p in model.parameters():
 
 # Optimizer + Loss Function Definition
 optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+criterion = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=tokenizer.pad_token_idx)
 print(f"Optimizer: {optimizer}")
-loss_func = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=tokenizer.pad_token_idx)
 
 # Train Loop:
 training_batches = len(train_loader)
 start = time.time()
-for i in range(epochs):
-    for j, (x, y) in enumerate(train_loader):
-        x, y = x.to(device), y.to(device)
-        logits_batch = model(x)
-        loss = calculate_loss(loss_func, logits_batch, y)
-        if (j < 5 or j % print_interval == 0 or j == training_batches-1):
+for epoch_number in range(epochs):
+    for batch_number, (inputs, targets) in enumerate(train_loader):
+        inputs, targets = inputs.to(device), targets.to(device)
+        logits = model(inputs)
+
+        flattened_logits = logits.view(batch_size*context_len, tokenizer.vocab_size)
+        flattened_targets = targets.view(batch_size*context_len).long()
+        loss = criterion(flattened_logits, flattened_targets)
+        if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
             # TODO: Avg. Loss Over Validation Set
-            print(f"\n Epoch {i+1} / {epochs} || {j} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
+            print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             generate.test_generate(model, tokenizer)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
-        clip_grad_norm_(model.parameters(), max_norm=1.0)
+        clip_grad_norm_(model.parameters(), max_norm=max_norm)
         optimizer.step()
 
 elapsed = time.time() - start
