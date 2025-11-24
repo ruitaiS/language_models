@@ -29,7 +29,7 @@ batch_size = 192
 validation_p = 0.1
 shuffle=True
 drop_last=True
-tokenization_method='word'
+tokenization_method='char'
 include_book=True
 
 # Training Parameters:

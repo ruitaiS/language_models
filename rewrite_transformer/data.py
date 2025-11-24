@@ -1,5 +1,6 @@
 import os
 import re
+import random
 from bisect import bisect_right
 from itertools import accumulate
 import torch
@@ -128,15 +129,25 @@ class TransformerDataset(Dataset):
             for line in encoded_lines
         )
 
-        self.lines = encoded_lines
+        random.shuffle(encoded_lines)
+        self.flattened = [token_idx for line in encoded_lines for token_idx in line]
+        self.context_len = context_len
+
+
+        '''self.lines = encoded_lines
         self.context_len = context_len
         self.pad_token_idx = pad_token_idx
-
         counts = [len(line)-1 for line in self.lines]
-        self.cumulative_counts = list(accumulate(counts))
+        self.cumulative_counts = list(accumulate(counts))'''
 
     def __getitem__(self, idx):
-        assert (idx >=0 and idx < self.cumulative_counts[-1])
+        assert (idx >=0 and idx < len(self))
+        x = self.flattened[idx: idx + self.context_len]
+        y = self.flattened[idx+1: idx + self.context_len+1]
+        return torch.tensor(x), torch.tensor(y)
+
+
+        '''assert (idx >=0 and idx < self.cumulative_counts[-1])
 
         line_idx = bisect_right(self.cumulative_counts, idx)
         p_0 = self.cumulative_counts[line_idx-1] if line_idx > 0 else 0
@@ -152,8 +163,9 @@ class TransformerDataset(Dataset):
 
         x = [self.pad_token_idx]*pad_x + self.lines[line_idx][x_i:x_f]
         y = [self.pad_token_idx]*pad_y + self.lines[line_idx][y_i:y_f]
-
-        return torch.tensor(x), torch.tensor(y)
+        return torch.tensor(x), torch.tensor(y)'''
+        
 
     def __len__(self):
-        return self.cumulative_counts[-1]
+        return len(self.flattened) - self.context_len
+        #return self.cumulative_counts[-1]
