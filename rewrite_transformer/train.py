@@ -7,7 +7,7 @@ from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
 
 from model import LanguageModel
-import generate
+import utils
 
 # Transformer Parameters:
 context_len = 256
@@ -116,7 +116,7 @@ for epoch_number in range(epochs):
         loss = criterion(flattened_logits, flattened_targets)
         if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
-            generate.test_generate(model, tokenizer)
+            utils.generate(model, tokenizer)
         if (batch_number % validation_interval == 0 and batch_number != 0):
             # Mini Batch Validation Pass Every 10 Print Intervals:
             model.eval()
