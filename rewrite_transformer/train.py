@@ -10,7 +10,7 @@ from model import LanguageModel
 import utils
 
 # Transformer Parameters:
-context_len = 256
+context_len = 128
 embedding_dim = 512
 num_layers = 6
 total_heads = 8
@@ -29,7 +29,7 @@ batch_size = 192
 validation_p = 0.1
 shuffle=True
 drop_last=True
-tokenization_method='char'
+tokenization_method='word'
 include_book=True
 
 # Training Parameters:
