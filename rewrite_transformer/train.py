@@ -36,7 +36,7 @@ include_book=True
 lr=1e-4 * (batch_size / 64)
 max_norm = 1.0
 print_interval= 100
-validation_interval = 500
+validation_interval = 100
 #rint_interval = 100 * (64 / batch_size)
 weight_decay=0.1
 epochs = 5
@@ -107,6 +107,7 @@ training_batches = len(train_loader)
 val_batches = len(val_loader)
 start = time.time()
 for epoch_number in range(epochs):
+
     for batch_number, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.to(device), targets.to(device)
         logits = model(inputs)
@@ -116,22 +117,34 @@ for epoch_number in range(epochs):
         if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             generate.test_generate(model, tokenizer)
-
-        # TODO: Validation Testing (Memory issue; its trying to hold both training and validation data at once)
-        '''if (batch_number % validation_interval == 0 or batch_number == training_batches-1):
+        if (batch_number % validation_interval == 0 and batch_number != 0):
+            # Mini Batch Validation Pass Every 10 Print Intervals:
             model.eval()
-            acc_loss = 0
-            for v_inputs, v_targets in val_loader:
+            with torch.no_grad():
+                v_inputs, v_targets = next(iter(val_loader))
                 v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
                 v_logits = model(v_inputs)
-                acc_loss += criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long())
-            mean_val_loss = acc_loss / val_batches
-            print(f"Mean Validation Loss: {mean_val_loss}")
-            model.train()'''
+                v_loss = criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long()).item()
+                print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
+            model.train()
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         clip_grad_norm_(model.parameters(), max_norm=max_norm)
         optimizer.step()
+    
+    # Full Validation Set Loss at the End:
+    model.eval()
+    print(f"Validating Loss Over {val_batches} Validation Batches...")
+    acc_loss = 0
+    with torch.no_grad():
+        for v_inputs, v_targets in val_loader:
+            v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
+            v_logits = model(v_inputs)
+            acc_loss += criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long()).item()
+    mean_val_loss = acc_loss / val_batches
+    print(f"Mean Validation Loss: {mean_val_loss}")
+    model.train()
+
 
 elapsed = time.time() - start
 print(f"\nTotal Elapsed time: {elapsed}")
