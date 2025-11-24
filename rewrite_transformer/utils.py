@@ -11,13 +11,11 @@ def save(model, name):
 
 def generate(model, tokenizer, prompt=[], max_length=500):
     # TODO: temperature, top-k (see ch 10)
-    # TODO: Test
     model.eval()
     tokens = torch.tensor([[tokenizer.start_token_idx] + prompt], device=model.device())
     for _ in range(max_length):
         logits = model(tokens)[:, -1:, :]
         probs = F.softmax(logits, dim=-1)
-        
         next_token = torch.distributions.Categorical(probs=probs).sample()
         tokens = torch.cat([tokens, next_token], dim=-1)
         if next_token == tokenizer.end_token_idx:
