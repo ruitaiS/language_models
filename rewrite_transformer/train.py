@@ -2,6 +2,7 @@ import os
 import time
 
 import data
+from data import Config
 import torch
 from torch.optim import AdamW
 from torch.nn.utils import clip_grad_norm_
@@ -9,112 +10,108 @@ from torch.nn.utils import clip_grad_norm_
 from model import LanguageModel
 import utils
 
-# Transformer Parameters:
-context_len = 128
-embedding_dim = 512
-num_layers = 6
-total_heads = 8
+# TODO: load_cfg logic here
 
-# TODO: Use these (rn they're defined within the LM itself)
-ffn_expansion_ratio = 4
-dropout_params = {
+default = {
+    # Transformer Parameters:
+    'context_len': 512, # GPT2: 1024
+    'embedding_dim': 768,
+    'num_layers': 12,
+    'heads_per_layer': 12,
+    'ffn_expansion_ratio': 4, # 768 * 4 = 3072 FFN Hidden Dim
+
+    # GPT2 uses no dropout btw!
     "embedding_dropout":0.1,
     "post_mha_dropout": 0.1,
     "post_ffn_dropout": 0.1,
     "attention_head_dropout": 0.1,
+
+    # Data Parameters:
+    'tk_method': 'word', # GPT2: BPE
+    'include_book': True,
+
+    'batch_size': 16, # GPT2: 512
+    'validation_p': 0.1,
+    'shuffle': True,
+    'drop_last': True,
+    'num_workers': 4, # or 8
+    'pin_memory': True,
+    'prefetch_factor': 2, # to 4
+    'persistent_workers': True,
+
+    # Training Parameters:
+    'lr': 5e-4 * (16 / 512), #  batch_size/512
+    'max_norm': 1.0,
+    'print_interval': 100,
+    'validation_interval': 100,
+    'weight_decay': 0.1,
+    'epochs': 5,
 }
 
-# Data Parameters:
-batch_size = 192
-validation_p = 0.1
-shuffle=True
-drop_last=True
-tokenization_method='char'
-include_book=True
+cfg = Config(default)
 
-# Training Parameters:
-lr=1e-4 * (batch_size / 64)
-max_norm = 1.0
-print_interval= 100
-validation_interval = 100
-#rint_interval = 100 * (64 / batch_size)
-weight_decay=0.1
-epochs = 5
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
-processed_lines = data.preprocess_akjv(include_book)
-tokenizer = data.Tokenizer(method=tokenization_method, initialization_text=processed_lines)
+processed_lines = data.preprocess_akjv(cfg.include_book)
+tokenizer = data.Tokenizer(method=cfg.tk_method, init_text=processed_lines)
 encoded_lines = tokenizer.encode_lines(processed_lines)
+cfg.tokenizer = tokenizer.cfg()
 
 # Loader Initialization ------------------------------------------------------------------------------------
-akjv_dataset = data.TransformerDataset(encoded_lines, context_len,
-                                       start_token_idx=tokenizer.start_token_idx,
-                                       end_token_idx=tokenizer.end_token_idx,
-                                       pad_token_idx=tokenizer.pad_token_idx)
-val_size = int(len(akjv_dataset) * validation_p)
-train_size = len(akjv_dataset) - val_size
-train_set, val_set = torch.utils.data.random_split(akjv_dataset, [train_size, val_size])
+akjv_dataset = data.TransformerDataset(encoded_lines, cfg.context_len,
+                                       start_token_idx=cfg.tokenizer.start_token_idx,
+                                       end_token_idx=cfg.tokenizer.end_token_idx,
+                                       pad_token_idx=cfg.tokenizer.pad_token_idx)
+train_loader, val_loader = data.train_val_loaders(akjv_dataset, cfg.batch_size, cfg.validation_p)
 
-print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {validation_p}")
-print(f"Training Set Size: {len(train_set)}")
-print(f"Validation Set Size: {len(val_set)}")
-print(f"Sum: {len(train_set) + len(val_set)}\n")
+print(f"Batch Size: {cfg.batch_size} || Drop Last Incomplete Batch: {cfg.drop_last}")
+print(f"Context Length: {cfg.context_len}")
+print(f"Train Loader Size: {len(train_loader)} || Instances: {cfg.batch_size * len(train_loader)}")
+print(f"Validation Loader Size: {len(val_loader)} || Instances: {cfg.batch_size * len(val_loader)}\n")
 
-train_loader = torch.utils.data.DataLoader(
-    train_set,
-    batch_size=batch_size,
-    shuffle=shuffle,
-    drop_last=drop_last)
-val_loader = torch.utils.data.DataLoader(
-    val_set,
-    batch_size=batch_size,
-    shuffle=shuffle,
-    drop_last=drop_last)
-
-print(f"Batch Size: {batch_size} || Drop Last Incomplete Batch: {drop_last}")
-print(f"Context Length: {context_len}")
-print(f"Train Loader Size: {len(train_loader)} || Instances: {batch_size * len(train_loader)}")
-print(f"Validation Loader Size: {len(val_loader)} || Instances: {batch_size * len(val_loader)}\n")
-
-print(f"Learning Rate: {lr}")
-print(f"Print Every {print_interval} batches || {print_interval * batch_size } sequences\n")
+print(f"Learning Rate: {cfg.lr}")
+print(f"Print Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
 # --------------------------------------------------------------------------------------------------------------
 
-device = torch.device("cuda")
-#device= torch.device("cpu")
-print(f"Device: {device}\n")
-
-model = LanguageModel(context_len,
-                      embedding_dim,
-                      num_layers,
-                      total_heads,
-                      vocab_size=tokenizer.vocab_size,
-                      pad_token_idx=tokenizer.pad_token_idx)
-model.to(device)
-model.train()
-
-print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
+# Model, Optimizer, and Loss Function
+model = LanguageModel(cfg)
 for p in model.parameters():
     p.requires_grad_(True)
-
-# Optimizer + Loss Function Definition
-optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-criterion = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=tokenizer.pad_token_idx)
+optimizer = AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+criterion = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=cfg.tokenizer.pad_token_idx)
+print(f"Total Model Parameters: {sum(p.nelement() for p in model.parameters())}")
 print(f"Optimizer: {optimizer}")
+print(f"Loss Function: {criterion}")
 
-# Train Loop:
+# Instantiating Training Loop Variables:
+if cfg.device is None:
+    cfg.device = torch.device("cuda")
+    #cfg.device= torch.device("cpu")
+device = cfg.device
+epochs = cfg.epochs
 training_batches = len(train_loader)
 val_batches = len(val_loader)
+batch_size = cfg.batch_size
+context_len = cfg.context_len
+vocab_size = cfg.tokenizer.vocab_size
+print_interval = cfg.print_interval
+validation_interval = cfg.validation_interval
+max_norm = cfg.max_norm
+
+# Train Start
+model.to(device)
+print(f"Device: {model.device}\n")
+model.train()
 start = time.time()
 for epoch_number in range(epochs):
-
     for batch_number, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.to(device), targets.to(device)
         logits = model(inputs)
         flattened_logits = logits.view(batch_size*context_len, tokenizer.vocab_size)
         flattened_targets = targets.view(batch_size*context_len).long()
         loss = criterion(flattened_logits, flattened_targets)
-        if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
+        #if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
+        if (batch_number % print_interval == 0 or batch_number == training_batches-1):
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             utils.generate(model, tokenizer)
         if (batch_number % validation_interval == 0 and batch_number != 0):
@@ -148,8 +145,15 @@ for epoch_number in range(epochs):
 
 elapsed = time.time() - start
 print(f"\nTotal Elapsed time: {elapsed}")
-print(f"Batch Size: {batch_size} || LR: {lr}")
-print(f"Sequence (Context) Length: {context_len}")
+print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
+print(f"Batch Size: {batch_size} || Learning Rate: {lr}")
+print(f"Context Length: {context_len}")
 print(f"Embedding Dimension: {embedding_dim}")
 print(f"Layers: {num_layers}")
-print(f"Heads: {total_heads}\n")
+print(f"Heads per Layer: {heads_per_layer}\n")
+
+# TODO:
+# Load CFG
+# Save CFG
+# Save Model (+ Handle interrupts)
+# Resume From Saved

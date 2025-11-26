@@ -14,7 +14,6 @@ def preprocess_akjv(include_book=True):
         lines = f.readlines()
     lines = [line.strip() for line in lines if line.strip()]
 
-
     pattern = re.compile(r'^\s*(?P<book>.+?)\s+(?P<chapter>\d+):(?P<verse>\d+)\s+(?P<text>.+?)\s*$')
     processed_lines = []
     for line in lines:
@@ -29,8 +28,43 @@ def preprocess_akjv(include_book=True):
         processed_lines.append(processed)
     return processed_lines
 
+def build_train_val_loaders(dataset, batch_size, validation_p, verbose=True, **kwargs):
+    # shuffle, drop_last, num_workers, pin_memory, prefetch_factor, persistent_workers
+    val_size = int(len(dataset) * validation_p)
+    train_size = len(dataset) - val_size
+    train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
+
+    train_loader = torch.utils.data.DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=kwargs.pop("shuffle", True),
+        drop_last=kwargs.pop("drop_last", True),
+        num_workers=kwargs.pop("num_workers", 4), # or 8
+        pin_memory=kwargs.pop("pin_memory", True),
+        prefetch_factor=kwargs.pop("prefetch_factor", 2), # to 4
+        persistent_workers=kwargs.pop("persistent_workers", True))
+
+    val_loader = torch.utils.data.DataLoader(
+        val_set,
+        batch_size=batch_size,
+        shuffle=kwargs.pop("shuffle", True),
+        drop_last=kwargs.pop("drop_last", True),
+        num_workers=kwargs.pop("num_workers", 4), # or 8
+        pin_memory=kwargs.pop("pin_memory", True),
+        prefetch_factor=kwargs.pop("prefetch_factor", 2), # to 4
+        persistent_workers=kwargs.pop("persistent_workers", True))
+
+    if verbose:
+        print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {validation_p}")
+        print(f"Training Loader Size: {len(train_loader)}")
+        print(f"Validation Loader Size: {len(val_loader)}")
+        print(f"Sum: {len(train_loader) + len(val_loader)}\n")
+        # print non-standard kwargs if you want
+
+    return train_loader, val_loader
+
 class Tokenizer:
-    def __init__(self, method='char', initialization_text=None):
+    def __init__(self, method='char', init_text=None):
 
         self.oov_token   = '<?>'
         self.start_token = '<s>'
@@ -48,7 +82,24 @@ class Tokenizer:
         self.vocab_size      = None
         self.idx2token       = None
         self.token2idx       = None
-        if initialization_text:self.build_vocab(initialization_text)
+        if init_text:self.build_vocab(init_text)
+
+    def cfg(self):
+        return {
+                'vocab_size': self.vocab_size,
+                'oov_token_idx': self.oov_token_idx,
+                'start_token_idx': self.start_token_idx,
+                'end_token_idx': self.end_token_idx,
+                'pad_token_idx': self.pad_token_idx,
+                'oov_token': self.oov_token,
+                'start_token': self.start_token,
+                'end_token': self.end_token,
+                'pad_token': self.pad_token,
+                }
+
+    def bpe(text_str):
+        # TODO
+        pass
 
     def set_tokenizer(self, method):
         assert method in ('char', 'word'), (
@@ -57,8 +108,10 @@ class Tokenizer:
         if method == 'word':
             re_tokenizer = RegexpTokenizer(r"\s+|<[^>\s]+>|[A-Za-z0-9]+'[A-Za-z0-9]+|\w+|[^\w\s]")
             self._tokenize = lambda text: re_tokenizer.tokenize(text)
-        else: # method == 'char'
+        elif method == 'char':
             self._tokenize = lambda text: list(text)
+        else: # bpe
+            self._tokenize = lambda text: self.bpe(text)
 
     def build_vocab(self, text):
         assert isinstance(text, str) or (isinstance(text, list) and all(isinstance(line, str) for line in text)),\
@@ -169,3 +222,14 @@ class TransformerDataset(Dataset):
     def __len__(self):
         return len(self.flattened) - self.context_len
         #return self.cumulative_counts[-1]
+
+class Config(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for k, v in self.items():
+            if isinstance(v, dict):
+                self[k] = Config(v)
+
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+

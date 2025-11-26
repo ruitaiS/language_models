@@ -9,6 +9,9 @@ def save(model, name):
     with open(os.path.join(base_path, f"models/{name}_params.json"), 'w') as f:
         json.dump(model.params(), f, indent=4)
 
+# load
+# train
+
 def generate(model, tokenizer, prompt=[], max_length=500):
     # TODO: temperature, top-k (see ch 10)
     model.eval()

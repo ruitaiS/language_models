@@ -38,3 +38,29 @@ Heads: 8
 ```
 
 the thing is im' not sure what "good" should look like. ok but it should definitely. look better on a transformer than on an LSTM, and definitely better on a GPU trained transformer than a CPU trained LSTM so this alone is telling me - something is a little fishy
+
+
+---
+
+keeping the shorter 128 context len; switching back to character tokenization
+
+switched to a much more basic shuffle, flatten, slice dataloader
+
+no cross-sentence masking yet; just gonna see what happens. since we stop generation on the end token, i'm not sure there's a huge difference; but arguably, we should be telling each token to not care about tokens outside of its own sentence; probably confusing it a little bit by doing that.
+
+-----
+nov25
+
+ok so the past couple of days have been really freaking disappointing. but then i realized like.. zoom out a little bit. the only two things really stopping this from being a relatively "modern" transformer implementation (eg. up to GPT-2 level) is the dataset, the tokenization schema, and some architecture parameters.
+
+i'm not atually hardware limited; i'm understanding limited. but i'm also not actually understanding limited, because its been done and those other people documented what they're doing.
+
+OH. this is actually crazy. this is the human supertech. "progress is measured by our ability to normalize that which was previously thought impossible." chuck that mf on a wall
+
+--
+
+updated params to roughly approximate gpt2. updated to use gelu instead of relu; main thing is shorter context window (should be fine since i'm doing single sentence generation) and much smaller batch sizes (due to memory constraint). learning rate is pinned to be proportional to GPT2's lr scaled by their batch size. 
+
+giving this a run while writing bpe; should be a godo 10 hours :)
+
+Why is the minibatch loss so much lower than the trainign loss, consistently. This doesn't seem to be quite right.

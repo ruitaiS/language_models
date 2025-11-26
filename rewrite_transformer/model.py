@@ -12,7 +12,7 @@ class EmbeddingLayer(nn.Module):
 
     def forward(self, token_batch, seq_len):
         return self.E(token_batch) + self.P(self.positions[:, :seq_len])
-    
+
 class FFN(nn.Module): # Feed Forward Network
     def __init__(self, d, expansion_ratio):
         super().__init__()
@@ -20,7 +20,7 @@ class FFN(nn.Module): # Feed Forward Network
 
         self.network = nn.Sequential(
             nn.Linear(d, int(d*expansion_ratio)),
-            nn.ReLU(), # TODO: toggle for nn.GeLU() # nn.SiLU()
+            nn.GELU(),
             nn.Linear(int(d*expansion_ratio), d),
         )
 
@@ -29,14 +29,14 @@ class FFN(nn.Module): # Feed Forward Network
 
 class TransformerBlock (nn.Module):
     # TODO: more intuitive dropout parameter passing
-    def __init__(self, d, total_heads, ffn_expansion_ratio, attention_head_dropout, post_mha_dropout, post_ffn_dropout):
+    def __init__(self, d, heads_per_layer, ffn_expansion_ratio, attention_head_dropout, post_mha_dropout, post_ffn_dropout):
         super().__init__()
 
         self.norm1 = nn.LayerNorm(d, eps=1e-5, elementwise_affine=True)
         self.norm2 = nn.LayerNorm(d, eps=1e-5, elementwise_affine=True)
         self.dropout1 = nn.Dropout(p=post_mha_dropout)
         self.dropout2 = nn.Dropout(p=post_ffn_dropout)
-        self.mha = MHA(d, total_heads, attention_head_dropout)
+        self.mha = MHA(d, heads_per_layer, attention_head_dropout)
         self.ffn = FFN(d, ffn_expansion_ratio)
 
     def forward(self, X, attention_mask):
@@ -56,11 +56,11 @@ class TransformerBlock (nn.Module):
         return X
 
 class MHA(nn.Module): # Multi-Headed Attention
-    def __init__(self, d, total_heads, attention_head_dropout):
+    def __init__(self, d, heads, attention_head_dropout):
         super().__init__()
-        assert d % total_heads == 0, "d must be divisible by total number of heads"
-        self.d_h = d // total_heads # instantiate SHAs with d_k and d_v set to d_h
-        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, attention_head_dropout) for _ in range(total_heads)])
+        assert d % heads == 0, f"d ({d}) must be divisible by number of attention heads ({heads})"
+        self.d_h = d // heads # instantiate SHAs with d_k and d_v set to d_h
+        self.heads = nn.ModuleList([SHA(d, self.d_h, self.d_h, attention_head_dropout) for _ in range(heads)])
         self.W_0 = nn.Linear(d, d)
     def forward(self, X, attention_mask):
         output = torch.cat([head(X, attention_mask) for head in self.heads], dim=-1)
@@ -90,35 +90,28 @@ class SHA(nn.Module): # Single Head Attention
         return product
 
 class LanguageModel(nn.Module):
-    def __init__(self, context_len, embedding_dim, num_layers, total_heads, vocab_size, pad_token_idx):
+    def __init__(self, cfg):
         super().__init__()
 
-        # TODO import as params
-        ffn_expansion_ratio=4
-        embedding_dropout = 0.1
-        post_mha_dropout=0.1
-        post_ffn_dropout=0.1
-        attention_head_dropout=0.1
+        self.vocab_size = cfg.vocab_size
+        self.context_len = cfg.context_len
+        self.pad_token_idx = cfg.special_tokens.pad_token_idx
+        self.embedding_dim = cfg.embedding_dim
+        self.num_layers = cfg.num_layers
+        self.heads_per_layer = cfg.heads_per_layer
+        self.ffn_expansion_ratio = cfg.ffn_expansion_ratio
+        self.embedding_dropout = cfg.embedding_dropout
+        self.post_mha_dropout = cfg.post_mha_dropout
+        self.post_ffn_dropout = cfg.post_ffn_dropout
+        self.attention_head_dropout = cfg.attention_head_dropout
 
-        self.vocab_size = vocab_size
-        self.context_len = context_len
-        self.pad_token_idx = pad_token_idx
-        self.embedding_dim = embedding_dim
-        self.num_layers = num_layers
-        self.total_heads = total_heads
-        self.ffn_expansion_ratio = ffn_expansion_ratio
-        self.embedding_dropout = embedding_dropout
-        self.post_mha_dropout = post_mha_dropout
-        self.post_ffn_dropout = post_ffn_dropout
-        self.attention_head_dropout = attention_head_dropout
-
-        self.register_buffer("causal_mask", torch.tril(torch.ones(context_len, context_len, dtype=torch.bool)))
-        self.embedding_layer = EmbeddingLayer(embedding_dim, vocab_size, context_len)
-        self.dropout = nn.Dropout(p=embedding_dropout)
+        self.register_buffer("causal_mask", torch.tril(torch.ones(cfg.context_len, cfg.context_len, dtype=torch.bool)))
+        self.embedding_layer = EmbeddingLayer(cfg.embedding_dim, cfg.vocab_size, cfg.context_len)
+        self.dropout = nn.Dropout(p=cfg.embedding_dropout)
         self.transformer_layers = nn.ModuleList(
-            [TransformerBlock(embedding_dim, total_heads, ffn_expansion_ratio,
-                              attention_head_dropout, post_mha_dropout, post_ffn_dropout)
-                              for _ in range(num_layers)])
+            [TransformerBlock(cfg.embedding_dim, cfg.heads_per_layer, cfg.ffn_expansion_ratio,
+                              cfg.attention_head_dropout, cfg.post_mha_dropout, cfg.post_ffn_dropout)
+                              for _ in range(cfg.num_layers)])
 
     def forward(self, token_batch):
         # Create attention mask
@@ -150,7 +143,7 @@ class LanguageModel(nn.Module):
             "pad_token_idx": self.pad_token_idx,
             "embedding_dim": self.embedding_dim,
             "num_layers": self.num_layers,
-            "total_heads": self.total_heads,
+            "heads_per_layer": self.heads_per_layer,
             "ffn_expansion_ratio": self.ffn_expansion_ratio,
             "embedding_dropout": self.embedding_dropout,
             "post_mha_dropout": self.post_mha_dropout,
