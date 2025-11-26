@@ -28,37 +28,37 @@ def preprocess_akjv(include_book=True):
         processed_lines.append(processed)
     return processed_lines
 
-def build_train_val_loaders(dataset, batch_size, validation_p, verbose=True, **kwargs):
+def build_train_val_loaders(dataset, cfg, verbose=True):
     # shuffle, drop_last, num_workers, pin_memory, prefetch_factor, persistent_workers
-    val_size = int(len(dataset) * validation_p)
+    val_size = int(len(dataset) * cfg.validation_p)
     train_size = len(dataset) - val_size
     train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
 
     train_loader = torch.utils.data.DataLoader(
         train_set,
-        batch_size=batch_size,
-        shuffle=kwargs.pop("shuffle", True),
-        drop_last=kwargs.pop("drop_last", True),
-        num_workers=kwargs.pop("num_workers", 4), # or 8
-        pin_memory=kwargs.pop("pin_memory", True),
-        prefetch_factor=kwargs.pop("prefetch_factor", 2), # to 4
-        persistent_workers=kwargs.pop("persistent_workers", True))
+        batch_size=cfg.batch_size,
+        shuffle=cfg.pop("shuffle", True),
+        drop_last=cfg.pop("drop_last", True),
+        num_workers=cfg.pop("num_workers", 4), # or 8
+        pin_memory=cfg.pop("pin_memory", True),
+        prefetch_factor=cfg.pop("prefetch_factor", 2), # to 4
+        persistent_workers=cfg.pop("persistent_workers", True))
 
     val_loader = torch.utils.data.DataLoader(
         val_set,
-        batch_size=batch_size,
-        shuffle=kwargs.pop("shuffle", True),
-        drop_last=kwargs.pop("drop_last", True),
-        num_workers=kwargs.pop("num_workers", 4), # or 8
-        pin_memory=kwargs.pop("pin_memory", True),
-        prefetch_factor=kwargs.pop("prefetch_factor", 2), # to 4
-        persistent_workers=kwargs.pop("persistent_workers", True))
+        batch_size=cfg.batch_size,
+        shuffle=cfg.pop("shuffle", True),
+        drop_last=cfg.pop("drop_last", True),
+        num_workers=cfg.pop("num_workers", 4), # or 8
+        pin_memory=cfg.pop("pin_memory", True),
+        prefetch_factor=cfg.pop("prefetch_factor", 2), # to 4
+        persistent_workers=cfg.pop("persistent_workers", True))
 
     if verbose:
-        print(f"Dataset Total Sequences: {len(dataset)} || Validation Proportion: {validation_p}")
-        print(f"Training Loader Sequences: {len(train_loader) * batch_size}")
-        print(f"Validation Loader Sequences: {len(val_loader) * batch_size}")
-        print(f"Sum: {len(train_loader) * batch_size + len(val_loader) * batch_size}\n")
+        print(f"Dataset Total Sequences: {len(dataset)} || Validation Proportion: {cfg.validation_p}")
+        print(f"Training Loader Sequences: {len(train_loader) * cfg.batch_size}")
+        print(f"Validation Loader Sequences: {len(val_loader) * cfg.batch_size}")
+        print(f"Sum: {len(train_loader) * cfg.batch_size + len(val_loader) * cfg.batch_size}\n")
         # print non-standard kwargs if you want
 
     return train_loader, val_loader

@@ -12,6 +12,42 @@ import utils
 
 # TODO: load_cfg logic here
 
+simple = {
+    # Transformer Parameters:
+    'context_len': 32, # GPT2: 1024
+    'embedding_dim': 32,
+    'num_layers': 4,
+    'heads_per_layer': 4,
+    'ffn_expansion_ratio': 4, # 768 * 4 = 3072 FFN Hidden Dim
+
+    # GPT2 uses no dropout btw!
+    "embedding_dropout":0.1,
+    "post_mha_dropout": 0.1,
+    "post_ffn_dropout": 0.1,
+    "attention_head_dropout": 0.1,
+
+    # Data Parameters:
+    'tk_method': 'char', # GPT2: BPE
+    'include_book': True,
+
+    'batch_size': 16, # GPT2: 512
+    'validation_p': 0.1,
+    'shuffle': True,
+    'drop_last': True,
+    'num_workers': 4, # or 8
+    'pin_memory': False,
+    'prefetch_factor': 2, # to 4
+    'persistent_workers': True,
+
+    # Training Parameters:
+    'lr': 5e-4 * (16 / 512), #  batch_size/512
+    'max_norm': 1.0,
+    'print_interval': 100,
+    'validation_interval': 100,
+    'weight_decay': 0.1,
+    'epochs': 2,
+}
+
 default = {
     # Transformer Parameters:
     'context_len': 512, # GPT2: 1024
@@ -48,7 +84,12 @@ default = {
     'epochs': 5,
 }
 
-cfg = Config(default)
+
+
+
+
+#cfg = Config(default)
+#cfg = Config(simple)
 
 
 # Tokenizer Initialization ------------------------------------------------------------------------------------
@@ -64,7 +105,7 @@ akjv_dataset = data.TransformerDataset(encoded_lines, cfg.context_len,
                                        start_token_idx=cfg.tokenizer.start_token_idx,
                                        end_token_idx=cfg.tokenizer.end_token_idx,
                                        pad_token_idx=cfg.tokenizer.pad_token_idx)
-train_loader, val_loader = data.build_train_val_loaders(akjv_dataset, cfg.batch_size, cfg.validation_p)
+train_loader, val_loader = data.build_train_val_loaders(akjv_dataset, cfg)
 # --------------------------------------------------------------------------------------------------------------
 
 # Model, Optimizer, and Loss Function
@@ -80,7 +121,8 @@ print(f"Learning Rate: {cfg.lr}")
 
 # Instantiating Training Loop Variables:
 if cfg.device is None:
-    cfg.device = "cuda" # "cpu"
+    #cfg.device = "cuda"
+    cfg.device = "cpu"
 device = torch.device(cfg.device)
 epochs = cfg.epochs
 training_batches = len(train_loader)
@@ -110,12 +152,12 @@ for epoch_number in range(epochs):
             elapsed = time.time() - start
             estimated = elapsed * (training_batches-1)/(batch_number)
             remaining = estimated * epochs - elapsed
-            h, hr = int(estimated // 3600), int(remaining // 3600)
-            m, mr = int((estimated % 3600) // 60), int((remaining % 3600) // 60)
-            s, sr = estimated % 60, remaining % 60
+            h, hr, eh = int(estimated // 3600), int(remaining // 3600), int(elapsed // 3600)
+            m, mr, em = int((estimated % 3600) // 60), int((remaining % 3600) // 60), int((elapsed % 3600) // 60)
+            s, sr, es = estimated % 60, remaining % 60, elapsed % 60
             
-            print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
-            print(f"Estimated Time Per Epoch: {h}h:{m}m:{s:.2f}s || Estimated Time Remaining: {hr}h:{mr}m:{sr:.2f}s\n")
+            print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {eh}h:{em}m:{es:.2f}s || Loss: {loss :.3f}")
+            print(f"Elapsed: {eh}h:{em}m:{es:.2f}s || Estimated Time Per Epoch: {h}h:{m}m:{s:.2f}s || Estimated Time Remaining: {hr}h:{mr}m:{sr:.2f}s\n")
             utils.generate(model, tokenizer)
         if (batch_number % validation_interval == 0 and batch_number != 0):
             # Mini Batch Validation Pass Every 10 Print Intervals:
