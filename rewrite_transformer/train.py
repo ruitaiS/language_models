@@ -58,19 +58,13 @@ encoded_lines = tokenizer.encode_lines(processed_lines)
 cfg.tokenizer = tokenizer.cfg()
 
 # Loader Initialization ------------------------------------------------------------------------------------
+print(f"Context Length: {cfg.context_len}")
+print(f"Batch Size: {cfg.batch_size} || Drop Last Incomplete Batch: {cfg.drop_last}")
 akjv_dataset = data.TransformerDataset(encoded_lines, cfg.context_len,
                                        start_token_idx=cfg.tokenizer.start_token_idx,
                                        end_token_idx=cfg.tokenizer.end_token_idx,
                                        pad_token_idx=cfg.tokenizer.pad_token_idx)
-train_loader, val_loader = data.train_val_loaders(akjv_dataset, cfg.batch_size, cfg.validation_p)
-
-print(f"Batch Size: {cfg.batch_size} || Drop Last Incomplete Batch: {cfg.drop_last}")
-print(f"Context Length: {cfg.context_len}")
-print(f"Train Loader Size: {len(train_loader)} || Instances: {cfg.batch_size * len(train_loader)}")
-print(f"Validation Loader Size: {len(val_loader)} || Instances: {cfg.batch_size * len(val_loader)}\n")
-
-print(f"Learning Rate: {cfg.lr}")
-print(f"Print Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
+train_loader, val_loader = data.build_train_val_loaders(akjv_dataset, cfg.batch_size, cfg.validation_p)
 # --------------------------------------------------------------------------------------------------------------
 
 # Model, Optimizer, and Loss Function
@@ -82,12 +76,12 @@ criterion = torch.nn.CrossEntropyLoss(reduction="mean", ignore_index=cfg.tokeniz
 print(f"Total Model Parameters: {sum(p.nelement() for p in model.parameters())}")
 print(f"Optimizer: {optimizer}")
 print(f"Loss Function: {criterion}")
+print(f"Learning Rate: {cfg.lr}")
 
 # Instantiating Training Loop Variables:
 if cfg.device is None:
-    cfg.device = torch.device("cuda")
-    #cfg.device= torch.device("cpu")
-device = cfg.device
+    cfg.device = "cuda" # "cpu"
+device = torch.device(cfg.device)
 epochs = cfg.epochs
 training_batches = len(train_loader)
 val_batches = len(val_loader)
@@ -101,17 +95,18 @@ max_norm = cfg.max_norm
 # Train Start
 model.to(device)
 print(f"Device: {model.device}\n")
+print(f"Printing Updates Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
 model.train()
 start = time.time()
 for epoch_number in range(epochs):
     for batch_number, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.to(device), targets.to(device)
         logits = model(inputs)
-        flattened_logits = logits.view(batch_size*context_len, tokenizer.vocab_size)
+        flattened_logits = logits.view(batch_size*context_len, vocab_size)
         flattened_targets = targets.view(batch_size*context_len).long()
         loss = criterion(flattened_logits, flattened_targets)
-        #if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
-        if (batch_number % print_interval == 0 or batch_number == training_batches-1):
+        if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
+        #if (batch_number % print_interval == 0 or batch_number == training_batches-1):
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
             utils.generate(model, tokenizer)
         if (batch_number % validation_interval == 0 and batch_number != 0):
@@ -121,7 +116,7 @@ for epoch_number in range(epochs):
                 v_inputs, v_targets = next(iter(val_loader))
                 v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
                 v_logits = model(v_inputs)
-                v_loss = criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long()).item()
+                v_loss = criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
                 print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
             model.train()
         optimizer.zero_grad(set_to_none=True)
@@ -137,7 +132,7 @@ for epoch_number in range(epochs):
         for v_inputs, v_targets in val_loader:
             v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
             v_logits = model(v_inputs)
-            acc_loss += criterion(v_logits.view(batch_size*context_len, tokenizer.vocab_size), v_targets.view(batch_size*context_len).long()).item()
+            acc_loss += criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
     mean_val_loss = acc_loss / val_batches
     print(f"Mean Validation Loss: {mean_val_loss}")
     model.train()
@@ -146,11 +141,11 @@ for epoch_number in range(epochs):
 elapsed = time.time() - start
 print(f"\nTotal Elapsed time: {elapsed}")
 print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
-print(f"Batch Size: {batch_size} || Learning Rate: {lr}")
+print(f"Batch Size: {batch_size} || Learning Rate: {cfg.lr}")
 print(f"Context Length: {context_len}")
-print(f"Embedding Dimension: {embedding_dim}")
-print(f"Layers: {num_layers}")
-print(f"Heads per Layer: {heads_per_layer}\n")
+print(f"Embedding Dimension: {model.embedding_dim}")
+print(f"Layers: {model.num_layers}")
+print(f"Heads per Layer: {model.heads_per_layer}\n")
 
 # TODO:
 # Load CFG

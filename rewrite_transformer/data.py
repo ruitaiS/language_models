@@ -55,10 +55,10 @@ def build_train_val_loaders(dataset, batch_size, validation_p, verbose=True, **k
         persistent_workers=kwargs.pop("persistent_workers", True))
 
     if verbose:
-        print(f"Dataset Total Size: {len(akjv_dataset)} || Validation Proportion: {validation_p}")
-        print(f"Training Loader Size: {len(train_loader)}")
-        print(f"Validation Loader Size: {len(val_loader)}")
-        print(f"Sum: {len(train_loader) + len(val_loader)}\n")
+        print(f"Dataset Total Sequences: {len(dataset)} || Validation Proportion: {validation_p}")
+        print(f"Training Loader Sequences: {len(train_loader) * batch_size}")
+        print(f"Validation Loader Sequences: {len(val_loader) * batch_size}")
+        print(f"Sum: {len(train_loader) * batch_size + len(val_loader) * batch_size}\n")
         # print non-standard kwargs if you want
 
     return train_loader, val_loader

@@ -93,9 +93,9 @@ class LanguageModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
-        self.vocab_size = cfg.vocab_size
+        self.vocab_size = cfg.tokenizer.vocab_size
         self.context_len = cfg.context_len
-        self.pad_token_idx = cfg.special_tokens.pad_token_idx
+        self.pad_token_idx = cfg.tokenizer.pad_token_idx
         self.embedding_dim = cfg.embedding_dim
         self.num_layers = cfg.num_layers
         self.heads_per_layer = cfg.heads_per_layer
@@ -106,7 +106,7 @@ class LanguageModel(nn.Module):
         self.attention_head_dropout = cfg.attention_head_dropout
 
         self.register_buffer("causal_mask", torch.tril(torch.ones(cfg.context_len, cfg.context_len, dtype=torch.bool)))
-        self.embedding_layer = EmbeddingLayer(cfg.embedding_dim, cfg.vocab_size, cfg.context_len)
+        self.embedding_layer = EmbeddingLayer(cfg.embedding_dim, cfg.tokenizer.vocab_size, cfg.context_len)
         self.dropout = nn.Dropout(p=cfg.embedding_dropout)
         self.transformer_layers = nn.ModuleList(
             [TransformerBlock(cfg.embedding_dim, cfg.heads_per_layer, cfg.ffn_expansion_ratio,
