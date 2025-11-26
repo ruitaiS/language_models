@@ -105,9 +105,17 @@ for epoch_number in range(epochs):
         flattened_logits = logits.view(batch_size*context_len, vocab_size)
         flattened_targets = targets.view(batch_size*context_len).long()
         loss = criterion(flattened_logits, flattened_targets)
-        if (batch_number < 5 or batch_number % print_interval == 0 or batch_number == training_batches-1):
+        if (batch_number % print_interval == 1 or batch_number == training_batches-1):
         #if (batch_number % print_interval == 0 or batch_number == training_batches-1):
+            elapsed = time.time() - start
+            estimated = elapsed * (training_batches-1)/(batch_number)
+            remaining = estimated * epochs - elapsed
+            h, hr = int(estimated // 3600), int(remaining // 3600)
+            m, mr = int((estimated % 3600) // 60), int((remaining % 3600) // 60)
+            s, sr = estimated % 60, remaining % 60
+            
             print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {(time.time() - start):.3f}s || Loss: {loss :.3f}")
+            print(f"Estimated Time Per Epoch: {h}h:{m}m:{s:.2f}s || Estimated Time Remaining: {hr}h:{mr}m:{sr:.2f}s\n")
             utils.generate(model, tokenizer)
         if (batch_number % validation_interval == 0 and batch_number != 0):
             # Mini Batch Validation Pass Every 10 Print Intervals:

@@ -223,13 +223,26 @@ class TransformerDataset(Dataset):
         return len(self.flattened) - self.context_len
         #return self.cumulative_counts[-1]
 
+import warnings
 class Config(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for k, v in self.items():
+
+        # wrap nested dicts at initialization
+        for k, v in list(self.items()):
             if isinstance(v, dict):
                 self[k] = Config(v)
 
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            warnings.warn(f"[Config] No such config field: '{key}'")
+            return None
+
+    def __setattr__(self, key, value):
+        # wrap assigned dicts as Config recursively
+        if isinstance(value, dict):
+            value = Config(value)
+        dict.__setitem__(self, key, value)
 
