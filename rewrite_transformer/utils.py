@@ -86,6 +86,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     for epoch_number in range(epochs):
         train_losses = []
         val_losses = []
+        grad_norms = []
         for batch_number, (inputs, targets) in enumerate(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
             logits = model(inputs)
@@ -94,10 +95,23 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
             loss = criterion(flattened_logits, flattened_targets)
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
+
+            # Save Layer Gradients
+            if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
+                layer_grads = []
+                for block in model.transformer_layers:
+                    total = 0.0
+                    for p in block.parameters():
+                        if p.grad is not None:
+                            total += p.grad.norm(2).item() ** 2
+                    layer_grads.append(total ** 0.5)
+                print(f"Grad Norms: {layer_grads}")
+                grad_norms.append(layer_grads)
+
             clip_grad_norm_(model.parameters(), max_norm=max_norm)
             optimizer.step()
             
-            if (batch_number % print_interval == 1 or batch_number == training_batches-1):
+            if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
                 elapsed = time.time() - start
                 estimated = elapsed * (training_batches-1)/(batch_number)
                 remaining = estimated * (epochs - epoch_number) - elapsed
@@ -110,7 +124,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                 print(f"Elapsed: {eh}h:{em}m:{es:.2f}s || Estimated Time Per Epoch: {h}h:{m}m:{s:.2f}s || Estimated Time Remaining: {hr}h:{mr}m:{sr:.2f}s\n")
                 generate(model, tokenizer)
 
-                # Mini Batch Validation Pass Every 10 Print Intervals:
+                # Mini Batch Validation Pass
                 model.eval()
                 with torch.no_grad():
                     v_inputs, v_targets = next(iter(val_loader))
@@ -119,7 +133,9 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     v_loss = criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
                     val_losses.append(v_loss)
                     print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
-                model.train()            
+                model.train()
+
+                save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
         
         # Full Validation Set Loss at the End:
         model.eval()
@@ -135,7 +151,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
         val_losses.append(epoch_loss)
         print("Validation Set Loss: {:.4f}".format(epoch_loss))
         model.train()
-        save(cfg, model, optimizer, train_losses, val_losses, resume_from=0, e=epoch_number)
+        save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number)
 
     elapsed = time.time() - start
     print(f"Training Complete")
@@ -148,30 +164,37 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     print(f"Heads per Layer: {model.heads_per_layer}\n")
     return model, optimizer #, training_log
 
-def save(cfg, model, optimizer, train_losses=[], val_losses=[], resume_from=0, e=0):
+def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [], resume_from=0, e=0, b=0):
 
     # TODO: This could use a little polishing
-    filepath = os.path.join('__checkpoints', cfg.name, f'epoch_{resume_from+e+1}.net')
-    os.makedirs(filepath, exist_ok=True)
+    filepath = os.path.join('__checkpoints', cfg.name, f'epoch_{resume_from+e+1}_{b}.net')
+    path, filename = os.path.split(filepath)
+    base, _ = os.path.splitext(filename)
+    meta_filename = base + ".plot"
+    os.makedirs(path, exist_ok=True)
 
     torch.save({
-        'cfg': cfg,
+        #'cfg': cfg,
         'model_state': model.state_dict(),
         'optimizer_state': optimizer.state_dict()
         }, filepath)
 
     # metadata
-    path, filename = os.path.split(filepath)
-    base, _ = os.path.splitext(filename)
-    meta_filename = base + ".plot"
+    # TODO: clean
+    epoch_loss = 0
+    if b == 0:
+        epoch_loss = val_losses[-1:]
+        val_losses = val_losses[:-1]
+    
     metadata = {
         # Training Summary:
         'print_interval': cfg.print_interval,
         'validation_interval': cfg.validation_interval,
         #'output_samples': len(train_losses) + len(val_losses), # Idk about this
         'train_minibatch_losses': train_losses,#epoch_losses,
-        'val_minibatch_losses': val_losses[:-1],
-        'epoch_full_validation_batch_loss': val_losses[-1:],
+        'val_minibatch_losses': val_losses,
+        'gradient_norms': grad_norms,
+        'epoch_full_validation_batch_loss': epoch_loss,
     }
     os.makedirs(os.path.join(path, 'loss_plot'), exist_ok=True)
     with open(os.path.join(path, 'loss_plot', meta_filename), "w") as f:
