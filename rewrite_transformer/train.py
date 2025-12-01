@@ -163,6 +163,9 @@ else:
     cfg.device = 'cpu'
 
 tokenizer, model, optimizer, criterion, train_loader, val_loader = init(cfg)
-#filepath = os.path.join('__checkpoints', cfg.name, f'epoch_1.net') # TODO: Load specific epoch
-#model, optimizer = load(filepath, model, optimizer)
+
+# TODO: Load specific epoch
+filepath = os.path.join('__checkpoints', cfg.name, f'epoch_1_0.net')
+model, optimizer = load(filepath, model, optimizer)
+
 model, optimizer = train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)

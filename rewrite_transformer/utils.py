@@ -33,6 +33,8 @@ class Config(dict):
         dict.__setitem__(self, key, value)
 
 def init(cfg, verbose=True):
+    print(f"Loaded Config: {cfg}\n")
+
     # Tokenizer Initialization ------------------------------------------------------------------------------------
     processed_lines = data.preprocess_akjv(cfg.include_book)
     tokenizer = data.Tokenizer(method=cfg.tk_method, init_text=processed_lines)
@@ -45,6 +47,7 @@ def init(cfg, verbose=True):
                                         end_token_idx=cfg.tokenizer.end_token_idx,
                                         pad_token_idx=cfg.tokenizer.pad_token_idx)
     train_loader, val_loader = data.build_train_val_loaders(akjv_dataset, cfg)
+
     # --------------------------------------------------------------------------------------------------------------
     # Model, Optimizer, and Loss Function
     model = LanguageModel(cfg)
@@ -56,7 +59,7 @@ def init(cfg, verbose=True):
     if verbose:
         print(f"Context Length: {cfg.context_len}")
         print(f"Batch Size: {cfg.batch_size} || Drop Last Incomplete Batch: {cfg.drop_last}")
-        print(f"Total Model Parameters: {sum(p.nelement() for p in model.parameters())}")
+        print(f"Total Model Parameters: {(sum(p.nelement() for p in model.parameters())):,}")
         print(f"Optimizer: {optimizer}")
         print(f"Loss Function: {criterion}")
         print(f"Learning Rate: {cfg.lr}")
@@ -111,10 +114,11 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
             clip_grad_norm_(model.parameters(), max_norm=max_norm)
             optimizer.step()
             
+
             if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
                 elapsed = time.time() - start
-                estimated = elapsed * (training_batches-1)/(batch_number)
-                remaining = estimated * (epochs - epoch_number) - elapsed
+                estimated = elapsed * (training_batches)/(batch_number)
+                remaining = estimated * (epochs) - elapsed
                 h, hr, eh = int(estimated // 3600), int(remaining // 3600), int(elapsed // 3600)
                 m, mr, em = int((estimated % 3600) // 60), int((remaining % 3600) // 60), int((elapsed % 3600) // 60)
                 s, sr, es = estimated % 60, remaining % 60, elapsed % 60
@@ -134,8 +138,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     val_losses.append(v_loss)
                     print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
                 model.train()
-
-                save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
+                #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
         
         # Full Validation Set Loss at the End:
         model.eval()
@@ -165,6 +168,46 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     return model, optimizer #, training_log
 
 def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [], resume_from=0, e=0, b=0):
+    '''
+    NOTE: Save/load process is completely fucked rn. Should be:
+
+    Save:
+    0) Create a subdirectory in checkpoints with the cfg and training statistics
+        - __checkpoints/{cfg.name}
+        - config.cfg
+        - stats.dat, with columns:
+            - time
+            - epoch
+            - batch
+            - training minibatch loss
+            - validation minibatch loss
+            - grad norms for each layer, one column for each layer
+            - full pass validation loss (only once at the end of the epoch, else None)
+    1) Every print interval:
+        - Append training statistics by line to a single file
+        - Save checkpoint to epoch_x_batch_y_checkpoint.net
+            - delete the last one when writing new one (or only keep every 5 or 10 or whatever. easiest to just delete)
+    2) Every epoch:
+        - save checkpoint to epoch_x.net
+        - delete any intervening checkpoints or put them somewhere that doesn't clutter
+        - calculate / write full pass loss
+
+    Load:
+    0) Load a model by name if specified, otherwise load the defaults
+    1) Load CFG file first, so we know which device to send to
+    2) Loader should call init
+        - rn init is called first, and the created resources are passed to the loader for it to update
+        - really this should be handled within loader, rather than exposed
+    3) Trainer should know where the checkpoint left off
+        - i don't want to handle resumes of batches between epochs, so let's just be ok with repeating training batches
+        - but the filenames should not conflict
+    '''
+
+    #path = os.path.join('__checkpoints', cfg.name)
+    #name = f'epoch_{resume_from+e+1}_{b}'
+
+
+
 
     # TODO: This could use a little polishing
     filepath = os.path.join('__checkpoints', cfg.name, f'epoch_{resume_from+e+1}_{b}.net')
@@ -173,8 +216,9 @@ def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [],
     meta_filename = base + ".plot"
     os.makedirs(path, exist_ok=True)
 
+
+
     torch.save({
-        #'cfg': cfg,
         'model_state': model.state_dict(),
         'optimizer_state': optimizer.state_dict()
         }, filepath)
@@ -201,13 +245,22 @@ def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [],
         json.dump(metadata, f, indent=4)
 
 def load(filepath, model, optimizer=None):
-    # TODO: Make sure the model you're trying to load is compatible with the device you're on
-    # TODO: Implement for CPU
-    checkpoint = torch.load(filepath)
-    model.load_state_dict(checkpoint['state_dict'])
+    # TODO: This is lowk really janky
+    # checkpoint contains the config, but config also contains the device that everything needs to go on
+    # 
+    checkpoint = torch.load(filepath, map_location='cuda')
+    model.load_state_dict(checkpoint['model_state'])
     if not optimizer:
+        print(f"No optimizer recieved. Initializing Adam..")
         optimizer=torch.optim.Adam(model.parameters(), lr=model.lr)
     optimizer.load_state_dict(checkpoint['optimizer_state'])
+
+    # TODO: This shouldn't be necessary if you have it set up correctly
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to('cuda')
+
     return model, optimizer
 
 def generate(model, tokenizer, prompt=[], max_length=500):

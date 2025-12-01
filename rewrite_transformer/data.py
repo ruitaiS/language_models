@@ -37,28 +37,28 @@ def build_train_val_loaders(dataset, cfg, verbose=True):
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=cfg.batch_size,
-        shuffle=cfg.pop("shuffle", True),
-        drop_last=cfg.pop("drop_last", True),
-        num_workers=cfg.pop("num_workers", 4), # or 8
-        pin_memory=cfg.pop("pin_memory", True),
-        prefetch_factor=cfg.pop("prefetch_factor", 2), # to 4
-        persistent_workers=cfg.pop("persistent_workers", True))
+        shuffle=cfg.get("shuffle", True),
+        drop_last=cfg.get("drop_last", True),
+        num_workers=cfg.get("num_workers", 4), # or 8
+        pin_memory=cfg.get("pin_memory", True),
+        prefetch_factor=cfg.get("prefetch_factor", 2), # to 4
+        persistent_workers=cfg.get("persistent_workers", True))
 
     val_loader = torch.utils.data.DataLoader(
         val_set,
         batch_size=cfg.batch_size,
-        shuffle=cfg.pop("shuffle", True),
-        drop_last=cfg.pop("drop_last", True),
-        num_workers=cfg.pop("num_workers", 4), # or 8
-        pin_memory=cfg.pop("pin_memory", True),
-        prefetch_factor=cfg.pop("prefetch_factor", 2), # to 4
-        persistent_workers=cfg.pop("persistent_workers", True))
+        shuffle=cfg.get("shuffle", True),
+        drop_last=cfg.get("drop_last", True),
+        num_workers=cfg.get("num_workers", 4), # or 8
+        pin_memory=cfg.get("pin_memory", True),
+        prefetch_factor=cfg.get("prefetch_factor", 2), # to 4
+        persistent_workers=cfg.get("persistent_workers", True))
 
     if verbose:
-        print(f"Dataset Total Sequences: {len(dataset)} || Validation Proportion: {cfg.validation_p}")
-        print(f"Training Loader Sequences: {len(train_loader) * cfg.batch_size}")
-        print(f"Validation Loader Sequences: {len(val_loader) * cfg.batch_size}")
-        print(f"Sum: {len(train_loader) * cfg.batch_size + len(val_loader) * cfg.batch_size}\n")
+        print(f"Dataset Total Sequences: {len(dataset):,} || Validation Proportion: {cfg.validation_p}")
+        print(f"Training Loader Sequences: {(len(train_loader) * cfg.batch_size):,}")
+        print(f"Validation Loader Sequences: {(len(val_loader) * cfg.batch_size):,}")
+        print(f"Sum: {(len(train_loader) * cfg.batch_size + len(val_loader) * cfg.batch_size):,}\n")
         # print non-standard kwargs if you want
 
     return train_loader, val_loader
@@ -87,14 +87,18 @@ class Tokenizer:
     def cfg(self):
         return {
                 'vocab_size': self.vocab_size,
-                'oov_token_idx': self.oov_token_idx,
-                'start_token_idx': self.start_token_idx,
-                'end_token_idx': self.end_token_idx,
-                'pad_token_idx': self.pad_token_idx,
+
                 'oov_token': self.oov_token,
+                'oov_token_idx': self.oov_token_idx,
+
                 'start_token': self.start_token,
+                'start_token_idx': self.start_token_idx,
+
                 'end_token': self.end_token,
+                'end_token_idx': self.end_token_idx,
+
                 'pad_token': self.pad_token,
+                'pad_token_idx': self.pad_token_idx,
                 }
 
     def bpe(text_str):
@@ -137,7 +141,7 @@ class Tokenizer:
         self.vocab_size = len(vocab)
         self.idx2token  = dict(enumerate(vocab))
         self.token2idx  = {token:idx for idx, token in self.idx2token.items()}
-        print(f"Final vocabulary size: {self.vocab_size}\n")
+        print(f"Final vocabulary size: {self.vocab_size:,}\n")
 
     def tokenize(self, text_str):
         assert isinstance(text_str, str)
@@ -156,7 +160,7 @@ class Tokenizer:
         for line in lines:
             idx_seq = [self.start_token_idx] + self.encode(line) + [self.end_token_idx]
             encoded_lines.append(idx_seq)
-        print(f"Finished encoding {len(encoded_lines)} lines\n")
+        print(f"Finished encoding {len(encoded_lines):,} lines\n")
         return encoded_lines
     
     def decode(self, idx_seq, drop_padding=False):
