@@ -73,7 +73,7 @@ simple_gpu = {
     'print_interval': 100,
     'validation_interval': 100,
     'weight_decay': 0.1,
-    'epochs': 5,
+    'epochs': 10,
 }
 
 default = {
@@ -116,7 +116,7 @@ default = {
 tweak = {
     'name': 'tweak',
     # Transformer Parameters:
-    'context_len': 512, # GPT2: 1024
+    'context_len': 192, # GPT2: 1024
     'embedding_dim': 768,
     'num_layers': 12,
     'heads_per_layer': 12,
@@ -129,10 +129,10 @@ tweak = {
     "attention_head_dropout": 0,
 
     # Data Parameters:
-    'tk_method': 'word', # GPT2: BPE
+    'tk_method': 'char', # GPT2: BPE
     'include_book': True,
 
-    'batch_size': 16, # GPT2: 512
+    'batch_size': 95, # GPT2: 512
     'validation_p': 0.1,
     'shuffle': True,
     'drop_last': True,
@@ -142,18 +142,18 @@ tweak = {
     'persistent_workers': True,
 
     # Training Parameters:
-    'lr': 5e-4 * (16 / 512), #  batch_size/512
+    'lr': 5e-4 * (95 / 512), #  gpt2_lr * (batch_size / gpt2 batch_size)
     'max_norm': 1.0,
     'print_interval': 100,
     'validation_interval': 100,
-    'weight_decay': 0.1,
-    'epochs': 3,
+    'weight_decay': 0.0,
+    'epochs': 5,
 }
 
 
 gpu=True
 if gpu:
-    cfg = Config(simple_gpu)
+    cfg = Config(tweak)
     #cfg = Config(default)
     cfg.device = 'cuda'
 else:
@@ -165,7 +165,7 @@ else:
 tokenizer, model, optimizer, criterion, train_loader, val_loader = init(cfg)
 
 # TODO: Load specific epoch
-filepath = os.path.join('__checkpoints', cfg.name, f'epoch_1_0.net')
-model, optimizer = load(filepath, model, optimizer)
+#filepath = os.path.join('__checkpoints', cfg.name, f'epoch_15_0.net')
+#model, optimizer = load(filepath, model, optimizer)
 
 model, optimizer = train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)

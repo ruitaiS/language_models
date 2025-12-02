@@ -138,7 +138,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     val_losses.append(v_loss)
                     print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
                 model.train()
-                #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
+                save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
         
         # Full Validation Set Loss at the End:
         model.eval()
