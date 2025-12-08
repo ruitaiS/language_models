@@ -78,7 +78,6 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     vocab_size = cfg.tokenizer.vocab_size
     print_interval = cfg.print_interval
     max_norm = cfg.max_norm
-    #training_log = {} # TODO
 
     # Train Start
     model.to(device)
@@ -89,7 +88,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     for epoch_number in range(epochs):
         train_losses = []
         val_losses = []
-        grad_norms = []
+        #grad_norms = []
         for batch_number, (inputs, targets) in enumerate(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
             logits = model(inputs)
@@ -100,6 +99,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
             loss.backward()
 
             # Save Layer Gradients
+            '''
             if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
                 layer_grads = []
                 for block in model.transformer_layers:
@@ -110,22 +110,27 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     layer_grads.append(total ** 0.5)
                 print(f"Grad Norms: {layer_grads}")
                 grad_norms.append(layer_grads)
+            '''
 
             clip_grad_norm_(model.parameters(), max_norm=max_norm)
             optimizer.step()
             
 
             if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
-                elapsed = time.time() - start
-                estimated = elapsed * (training_batches)/(batch_number)
-                remaining = estimated * (epochs) - elapsed
-                h, hr, eh = int(estimated // 3600), int(remaining // 3600), int(elapsed // 3600)
-                m, mr, em = int((estimated % 3600) // 60), int((remaining % 3600) // 60), int((elapsed % 3600) // 60)
-                s, sr, es = estimated % 60, remaining % 60, elapsed % 60
+                elapsed_time = time.time() - start
+                time_per_epoch = (elapsed_time / (training_batches * epoch_number + batch_number)) *(training_batches)
+                time_per_session = time_per_epoch * epochs
+                time_left_in_epoch = (time_per_epoch * (epoch_number + 1)) - elapsed_time
+                time_left_in_session = time_per_session - elapsed_time
+
+                print(f"\nEpoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || Training Loss: {loss :.3f}\n")
+                print(f" {int(elapsed_time // 3600):02d}h:{int((elapsed_time % 3600)//60):02d}m:{int(elapsed_time % 60):02d}s Elapsed\n")
+                print(f" {int(time_left_in_epoch // 3600):02d}h:{int((time_left_in_epoch % 3600)//60):02d}m:{int(time_left_in_epoch % 60):02d}s Est. Time Left in Epoch")
+                print(f" {int(time_per_epoch // 3600):02d}h:{int((time_per_epoch % 3600)//60):02d}m:{int(time_per_epoch % 60):02d}s Est. Time Per Epoch\n")
+                print(f" {int(time_left_in_session // 3600):02d}h:{int((time_left_in_session % 3600)//60):02d}m:{int(time_left_in_session % 60):02d}s Est. Time Left")
+                print(f" {int(time_per_session // 3600):02d}h:{int((time_per_session % 3600)//60):02d}m:{int(time_per_session % 60):02d}s Est. Total Time\n")
 
                 train_losses.append(loss.item())    
-                print(f"\n Epoch {epoch_number+1} / {epochs} || {batch_number} / {training_batches-1} || {eh}h:{em}m:{es:.2f}s || Loss: {loss :.3f}")
-                print(f"Elapsed: {eh}h:{em}m:{es:.2f}s || Estimated Time Per Epoch: {h}h:{m}m:{s:.2f}s || Estimated Time Remaining: {hr}h:{mr}m:{sr:.2f}s\n")
                 generate(model, tokenizer)
 
                 # Mini Batch Validation Pass
@@ -136,29 +141,32 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     v_logits = model(v_inputs)
                     v_loss = criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
                     val_losses.append(v_loss)
-                    print(f"Mini-batch Validation Loss: {v_loss :.3f}\n")
+                    print(f"Mini-batch Validation Loss: {v_loss :.3f}")
                 model.train()
-                save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
+                if batch_number != training_batches - 1:
+                    save_model(cfg, model, optimizer, epoch=epoch_number, batch=batch_number)
+                #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
         
         # Full Validation Set Loss at the End:
         model.eval()
-        print(f"Validating Loss Over {val_batches} Validation Batches...")
+        print(f"\nValidating Loss Over {val_batches} Validation Batches...")
         acc = []
         with torch.no_grad():
             for v_inputs, v_targets in val_loader:
                 v_inputs, v_targets = v_inputs.to(device), v_targets.to(device)
                 v_logits = model(v_inputs)
-                v_loss += criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
+                v_loss = criterion(v_logits.view(batch_size*context_len, vocab_size), v_targets.view(batch_size*context_len).long()).item()
                 acc.append(v_loss)
         epoch_loss = sum(acc) / len(acc)
         val_losses.append(epoch_loss)
         print("Validation Set Loss: {:.4f}".format(epoch_loss))
         model.train()
-        save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number)
+        save_model(cfg, model, optimizer, epoch=epoch_number+1, batch=0)
+        #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number)
 
     elapsed = time.time() - start
     print(f"Training Complete")
-    print(f"\nTotal Elapsed time: {elapsed}")
+    print(f"\nTotal Elapsed time: {int(elapsed // 3600):02d}h:{int((elapsed % 3600)//60):02d}m:{int(elapsed % 60):02d}s")
     print(f"Total Parameters: {sum(p.nelement() for p in model.parameters())}")
     print(f"Batch Size: {batch_size} || Learning Rate: {cfg.lr}")
     print(f"Context Length: {context_len}")
@@ -166,6 +174,52 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     print(f"Layers: {model.num_layers}")
     print(f"Heads per Layer: {model.heads_per_layer}\n")
     return model, optimizer #, training_log
+
+#----------------------------
+
+def save_model(cfg, model, optimizer, epoch, batch):
+    save_dir = os.path.join('__checkpoints', cfg.device, cfg.name)
+    if batch == 0:
+        model_filename = f'epoch_{epoch}.net'
+    else:
+        model_filename = 'checkpoint.net'
+
+    print(f"Saving '{os.path.join(save_dir, model_filename)}'\n")
+    os.makedirs(save_dir, exist_ok=True)
+    torch.save({
+        'model_state': model.state_dict(),
+        'optimizer_state': optimizer.state_dict()
+        }, os.path.join(save_dir, model_filename))
+    
+    if model_filename == 'checkpoint.net':
+        # TODO: Save loader state so it can be resumed mid-epoch
+        pass
+    else:
+        if os.path.isfile(os.path.join(save_dir, 'checkpoint.net')):
+            os.remove(os.path.join(save_dir, 'checkpoint.net'))
+
+# TODO: Loader state
+def load_model(cfg, model, optimizer, loader=None):
+    pass
+
+    
+def save_config(cfg):
+    pass
+
+    
+def update_plot(cfg, row):
+    plot_filename = 'training_metadata.csv'
+    '''
+    - time
+    - epoch
+    - batch
+    - training minibatch loss
+    - validation minibatch loss
+    - grad norms for each layer, one column for each layer
+    - full pass validation loss (only once at the end of the epoch, else None)
+    '''
+    pass
+
 
 def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [], resume_from=0, e=0, b=0):
     '''
@@ -265,7 +319,8 @@ def load(filepath, model, optimizer=None):
 
 def generate(model, tokenizer, prompt=[], max_length=500):
     # TESTING
-    max_length = model.context_len
+    max_length = 200
+    #max_length = model.context_len
 
     # TODO: temperature, top-k (see ch 10)
     model.eval()

@@ -2,7 +2,9 @@ import os
 from utils import Config, init, load, train
 # Training Logic is in utils.py
 
-simple = {
+fast = {
+    'name': 'fast',
+
     # Transformer Parameters:
     'context_len': 32, # GPT2: 1024
     'embedding_dim': 32,
@@ -11,16 +13,16 @@ simple = {
     'ffn_expansion_ratio': 4, # 768 * 4 = 3072 FFN Hidden Dim
 
     # GPT2 uses no dropout btw!
-    "embedding_dropout":0.1,
-    "post_mha_dropout": 0.1,
-    "post_ffn_dropout": 0.1,
-    "attention_head_dropout": 0.1,
+    "embedding_dropout":0.0, #0.1,
+    "post_mha_dropout": 0.0, #0.1,
+    "post_ffn_dropout": 0.0, #0.1,
+    "attention_head_dropout": 0.0, #0.1,
 
     # Data Parameters:
     'tk_method': 'char', # GPT2: BPE
     'include_book': True,
 
-    'batch_size': 16, # GPT2: 512
+    'batch_size': 30000, # cuda: 30000, cpu: ?
     'validation_p': 0.1,
     'shuffle': True,
     'drop_last': True,
@@ -30,12 +32,12 @@ simple = {
     'persistent_workers': True,
 
     # Training Parameters:
-    'lr': 5e-4 * (16 / 512), #  batch_size/512
+    'lr': 5e-4 * (30000 / 512), #  batch_size/512
     'max_norm': 1.0,
-    'print_interval': 100,
-    'validation_interval': 100,
+    'print_interval': 10,
+    'validation_interval': 10,
     'weight_decay': 0.1,
-    'epochs': 2,
+    'epochs': 3, # cuda: 1:15 per epoch # cpu: ?
 }
 
 simple_gpu = {
@@ -113,8 +115,8 @@ default = {
     'epochs': 5,
 }
 
-tweak = {
-    'name': 'tweak',
+gpt2like = {
+    'name': 'gpt2-like',
     # Transformer Parameters:
     'context_len': 192, # GPT2: 1024
     'embedding_dim': 768,
@@ -150,16 +152,15 @@ tweak = {
     'epochs': 5,
 }
 
-
 gpu=True
 if gpu:
-    cfg = Config(tweak)
     #cfg = Config(default)
+    cfg = Config(fast)
     cfg.device = 'cuda'
 else:
     # This is a completely different architecture and training regimen
     # Will need to make sure cpu models and gpu models are kept apart
-    cfg = Config(simple)
+    cfg = Config(fast)
     cfg.device = 'cpu'
 
 tokenizer, model, optimizer, criterion, train_loader, val_loader = init(cfg)
