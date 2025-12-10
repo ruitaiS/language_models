@@ -32,6 +32,31 @@ class Config(dict):
             value = Config(value)
         dict.__setitem__(self, key, value)
 
+    def to_dict(self):
+        result = {}
+        for k, v in self.items():
+            if isinstance(v, Config):
+                result[k] = v.to_dict()
+            else:
+                result[k] = v
+        return result
+    
+    def save(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        with open(os.path.join(save_dir, 'config.json'), "w") as f:
+            json.dump(self.to_dict(), f, indent=4)
+        print(f"Saved config to '{os.path.join(save_dir, 'config.json')}'")
+    
+    @classmethod
+    def load(cls, save_dir):
+        try:
+            with open(os.path.join(save_dir, 'config.json'), "r") as f:
+                return cls(json.load(f))
+        except Exception as e:
+            raise RuntimeError("Failed to load config") from e
+
+
+
 def init(cfg, verbose=True):
     print(f"Loaded Config: {cfg}\n")
 
@@ -63,13 +88,14 @@ def init(cfg, verbose=True):
         print(f"Optimizer: {optimizer}")
         print(f"Loss Function: {criterion}")
         print(f"Learning Rate: {cfg.lr}")
-
     return tokenizer, model, optimizer, criterion, train_loader, val_loader
 
 def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader):
 
     # Instantiating Training Loop Variables:
     device = torch.device(cfg.device)
+    epoch = cfg.epoch
+    batch = cfg.batch
     epochs = cfg.epochs
     training_batches = len(train_loader)
     val_batches = len(val_loader)
@@ -85,11 +111,13 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     print(f"Printing Updates Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
     model.train()
     start = time.time()
-    for epoch_number in range(epochs):
+    for epoch_number in range(epoch, epochs):
         train_losses = []
         val_losses = []
         #grad_norms = []
-        for batch_number, (inputs, targets) in enumerate(train_loader):
+
+        # TODO: Sync the batch order; this only sets the number of batches to loop
+        for batch_number, (inputs, targets) in enumerate(train_loader, start=batch):
             inputs, targets = inputs.to(device), targets.to(device)
             logits = model(inputs)
             flattened_logits = logits.view(batch_size*context_len, vocab_size)
@@ -114,7 +142,6 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
 
             clip_grad_norm_(model.parameters(), max_norm=max_norm)
             optimizer.step()
-            
 
             if batch_number != 0 and (batch_number % print_interval == 0 or batch_number == training_batches-1):
                 elapsed_time = time.time() - start
@@ -144,8 +171,8 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
                     print(f"Mini-batch Validation Loss: {v_loss :.3f}")
                 model.train()
                 if batch_number != training_batches - 1:
-                    save_model(cfg, model, optimizer, epoch=epoch_number, batch=batch_number)
-                #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number, b=batch_number)
+                    cfg.batch = batch_number
+                    save_model(cfg, model, optimizer)
         
         # Full Validation Set Loss at the End:
         model.eval()
@@ -161,8 +188,8 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
         val_losses.append(epoch_loss)
         print("Validation Set Loss: {:.4f}".format(epoch_loss))
         model.train()
-        save_model(cfg, model, optimizer, epoch=epoch_number+1, batch=0)
-        #save(cfg, model, optimizer, train_losses, val_losses, grad_norms, resume_from=0, e=epoch_number)
+        cfg.epoch, cfg.batch = epoch_number + 1, 0
+        save_model(cfg, model, optimizer)
 
     elapsed = time.time() - start
     print(f"Training Complete")
@@ -174,13 +201,14 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
     print(f"Layers: {model.num_layers}")
     print(f"Heads per Layer: {model.heads_per_layer}\n")
     return model, optimizer #, training_log
-
 #----------------------------
 
-def save_model(cfg, model, optimizer, epoch, batch):
+def save_model(cfg, model, optimizer):
     save_dir = os.path.join('__checkpoints', cfg.device, cfg.name)
-    if batch == 0:
-        model_filename = f'epoch_{epoch}.net'
+    cfg.save(save_dir)
+
+    if cfg.batch == 0:
+        model_filename = f'epoch_{cfg.epoch}.net'
     else:
         model_filename = 'checkpoint.net'
 
@@ -199,13 +227,33 @@ def save_model(cfg, model, optimizer, epoch, batch):
             os.remove(os.path.join(save_dir, 'checkpoint.net'))
 
 # TODO: Loader state
-def load_model(cfg, model, optimizer, loader=None):
-    pass
+def load_model(save_dir, model, optimizer, loader=None):
+    # TODO: save and grab .cfg file
+    cfg = Config.load(save_dir)
 
-    
-def save_config(cfg):
-    pass
+    if os.path.isfile(os.path.join(save_dir, 'checkpoint.net')):
+        model_file = 'checkpoint.net' # TODO: Find + Update the loader state as well
+        if not loader:
+            # TODO: Warn that loader state isn't updated (will mess up loss function tracking)
+            # Or maybe exit, idk
+            pass
+    else:
+        model_file = f'epoch_{cfg.epoch}.net'
+    filepath = os.path.join(save_dir, model_file)
+    checkpoint = torch.load(filepath, map_location=cfg.device)
+    model.load_state_dict(checkpoint['model_state'])
+    if not optimizer:
+        print(f"No optimizer recieved. Initializing Adam..")
+        optimizer=torch.optim.Adam(model.parameters(), lr=model.lr)
+    optimizer.load_state_dict(checkpoint['optimizer_state'])
 
+    # TODO: This shouldn't be necessary if you have it set up correctly
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(cfg.device)
+
+    return cfg, model, optimizer
     
 def update_plot(cfg, row):
     plot_filename = 'training_metadata.csv'
@@ -219,103 +267,6 @@ def update_plot(cfg, row):
     - full pass validation loss (only once at the end of the epoch, else None)
     '''
     pass
-
-
-def save(cfg, model, optimizer, train_losses=[], val_losses=[], grad_norms = [], resume_from=0, e=0, b=0):
-    '''
-    NOTE: Save/load process is completely fucked rn. Should be:
-
-    Save:
-    0) Create a subdirectory in checkpoints with the cfg and training statistics
-        - __checkpoints/{cfg.name}
-        - config.cfg
-        - stats.dat, with columns:
-            - time
-            - epoch
-            - batch
-            - training minibatch loss
-            - validation minibatch loss
-            - grad norms for each layer, one column for each layer
-            - full pass validation loss (only once at the end of the epoch, else None)
-    1) Every print interval:
-        - Append training statistics by line to a single file
-        - Save checkpoint to epoch_x_batch_y_checkpoint.net
-            - delete the last one when writing new one (or only keep every 5 or 10 or whatever. easiest to just delete)
-    2) Every epoch:
-        - save checkpoint to epoch_x.net
-        - delete any intervening checkpoints or put them somewhere that doesn't clutter
-        - calculate / write full pass loss
-
-    Load:
-    0) Load a model by name if specified, otherwise load the defaults
-    1) Load CFG file first, so we know which device to send to
-    2) Loader should call init
-        - rn init is called first, and the created resources are passed to the loader for it to update
-        - really this should be handled within loader, rather than exposed
-    3) Trainer should know where the checkpoint left off
-        - i don't want to handle resumes of batches between epochs, so let's just be ok with repeating training batches
-        - but the filenames should not conflict
-    '''
-
-    #path = os.path.join('__checkpoints', cfg.name)
-    #name = f'epoch_{resume_from+e+1}_{b}'
-
-
-
-
-    # TODO: This could use a little polishing
-    filepath = os.path.join('__checkpoints', cfg.name, f'epoch_{resume_from+e+1}_{b}.net')
-    path, filename = os.path.split(filepath)
-    base, _ = os.path.splitext(filename)
-    meta_filename = base + ".plot"
-    os.makedirs(path, exist_ok=True)
-
-
-
-    torch.save({
-        'model_state': model.state_dict(),
-        'optimizer_state': optimizer.state_dict()
-        }, filepath)
-
-    # metadata
-    # TODO: clean
-    epoch_loss = 0
-    if b == 0:
-        epoch_loss = val_losses[-1:]
-        val_losses = val_losses[:-1]
-    
-    metadata = {
-        # Training Summary:
-        'print_interval': cfg.print_interval,
-        'validation_interval': cfg.validation_interval,
-        #'output_samples': len(train_losses) + len(val_losses), # Idk about this
-        'train_minibatch_losses': train_losses,#epoch_losses,
-        'val_minibatch_losses': val_losses,
-        'gradient_norms': grad_norms,
-        'epoch_full_validation_batch_loss': epoch_loss,
-    }
-    os.makedirs(os.path.join(path, 'loss_plot'), exist_ok=True)
-    with open(os.path.join(path, 'loss_plot', meta_filename), "w") as f:
-        json.dump(metadata, f, indent=4)
-
-def load(filepath, model, optimizer=None):
-    # TODO: This is lowk really janky
-    # checkpoint contains the config, but config also contains the device that everything needs to go on
-    # 
-    checkpoint = torch.load(filepath, map_location='cuda')
-    model.load_state_dict(checkpoint['model_state'])
-    if not optimizer:
-        print(f"No optimizer recieved. Initializing Adam..")
-        optimizer=torch.optim.Adam(model.parameters(), lr=model.lr)
-    optimizer.load_state_dict(checkpoint['optimizer_state'])
-
-    # TODO: This shouldn't be necessary if you have it set up correctly
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to('cuda')
-
-    return model, optimizer
 
 def generate(model, tokenizer, prompt=[], max_length=500):
     # TESTING

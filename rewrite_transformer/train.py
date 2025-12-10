@@ -1,5 +1,5 @@
 import os
-from utils import Config, init, load, train
+from utils import Config, init, load_model, train
 # Training Logic is in utils.py
 
 fast = {
@@ -37,7 +37,19 @@ fast = {
     'print_interval': 10,
     'validation_interval': 10,
     'weight_decay': 0.1,
-    'epochs': 3, # cuda: 1:15 per epoch # cpu: ?
+    'epochs': 50, # cuda: 1:15m per epoch # cpu: ?
+
+    # Training state:
+    'epoch': 0,
+    'batch': 0,
+
+    # TODO:
+    '''
+    - loader state (tracking the batch number alone isn't enough)
+
+    - should seperate the values that will remain static the entire duration of the training,
+    vs. values that need to update during iteration loops (eg. epoch and batch number)
+    '''
 }
 
 simple_gpu = {
@@ -152,6 +164,8 @@ gpt2like = {
     'epochs': 5,
 }
 
+
+resume=True
 gpu=True
 if gpu:
     #cfg = Config(default)
@@ -163,10 +177,28 @@ else:
     cfg = Config(fast)
     cfg.device = 'cpu'
 
+save_dir = os.path.join('__checkpoints', cfg.device, cfg.name)
 tokenizer, model, optimizer, criterion, train_loader, val_loader = init(cfg)
 
-# TODO: Load specific epoch
-#filepath = os.path.join('__checkpoints', cfg.name, f'epoch_15_0.net')
-#model, optimizer = load(filepath, model, optimizer)
+if os.path.isdir(save_dir):
+    if resume == True:
+        cfg, model, optimizer = load_model(save_dir, model, optimizer)
+        print(f"Successfully Resumed {cfg.device}/{cfg.name} from epoch {cfg.epoch} batch {cfg.batch}")
+    else:
+        print("\nResume set to false but previous saved models exist")
+        print("Manually remove existing save folder, or set resume to True")
+        exit()
 
 model, optimizer = train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
+
+
+'''
+current logic works but is confusing
+
+rn initialization and loading are seperate, and train contains logic to differentiate between the two.
+loading should instead be daisychained directly onto initialization
+
+we should either have a save_dir specified, or not:
+- if it's not specified, then load one of the presets
+- if it is specified, then load a cfg, and as part of the init process, load the model
+'''
