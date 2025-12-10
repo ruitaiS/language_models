@@ -42,15 +42,14 @@ fast = {
     # Training state:
     'epoch': 0,
     'batch': 0,
-
-    # TODO:
-    '''
-    - loader state (tracking the batch number alone isn't enough)
-
-    - should seperate the values that will remain static the entire duration of the training,
-    vs. values that need to update during iteration loops (eg. epoch and batch number)
-    '''
 }
+# TODO:
+'''
+- loader state (tracking the batch number alone isn't enough)
+
+- should seperate the values that will remain static the entire duration of the training,
+vs. values that need to update during iteration loops (eg. epoch and batch number)
+'''
 
 simple_gpu = {
     'name': 'simple_gpu',
@@ -168,18 +167,16 @@ gpt2like = {
 resume=True
 gpu=True
 if gpu:
-    #cfg = Config(default)
     cfg = Config(fast)
     cfg.device = 'cuda'
 else:
-    # This is a completely different architecture and training regimen
-    # Will need to make sure cpu models and gpu models are kept apart
     cfg = Config(fast)
     cfg.device = 'cpu'
+print(f"Device: {cfg.device}\n")
+print(f"Printing Updates Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
 
-save_dir = os.path.join('__checkpoints', cfg.device, cfg.name)
 tokenizer, model, optimizer, criterion, train_loader, val_loader = init(cfg)
-
+save_dir = os.path.join('__checkpoints', cfg.device, cfg.name)
 if os.path.isdir(save_dir):
     if resume == True:
         cfg, model, optimizer = load_model(save_dir, model, optimizer)
@@ -188,7 +185,6 @@ if os.path.isdir(save_dir):
         print("\nResume set to false but previous saved models exist")
         print("Manually remove existing save folder, or set resume to True")
         exit()
-
 model, optimizer = train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
 
 

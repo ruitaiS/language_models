@@ -55,8 +55,6 @@ class Config(dict):
         except Exception as e:
             raise RuntimeError("Failed to load config") from e
 
-
-
 def init(cfg, verbose=True):
     print(f"Loaded Config: {cfg}\n")
 
@@ -107,8 +105,6 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
 
     # Train Start
     model.to(device)
-    print(f"Device: {model.device}\n")
-    print(f"Printing Updates Every {cfg.print_interval} batches || {cfg.print_interval * cfg.batch_size } sequences\n")
     model.train()
     start = time.time()
     for epoch_number in range(epoch, epochs):
@@ -117,7 +113,7 @@ def train(cfg, tokenizer, model, optimizer, criterion, train_loader, val_loader)
         #grad_norms = []
 
         # TODO: Sync the batch order; this only sets the number of batches to loop
-        for batch_number, (inputs, targets) in enumerate(train_loader, start=batch):
+        for batch_number, (inputs, targets) in enumerate(train_loader, start=batch): # TODO: seems to iterate past the end :(
             inputs, targets = inputs.to(device), targets.to(device)
             logits = model(inputs)
             flattened_logits = logits.view(batch_size*context_len, vocab_size)
